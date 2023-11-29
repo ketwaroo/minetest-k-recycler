@@ -1,3 +1,6 @@
+-- K Recycle Bin
+-- 2023 (c) Ketwaroo
+
 local S = minetest.get_translator(minetest.get_current_modname())
 local F = minetest.formspec_escape
 local C = minetest.colorize
@@ -212,8 +215,8 @@ end
 -- @returns boolean
 local do_recycle              = function(pos)
     -- reread at each run in case you use the /set command.
-    local leftoverFreebiesChance = math.min(1.0, math.max(0.0, tonumber(minetest.settings:get_bool("k_recyclebin.leftover_freebies_chance")))) or 0.8
-    local minPartialRecycleRatio = math.min(1.0, math.max(0.0, tonumber(minetest.settings:get("k_recyclebin.partial_recycling_minimum_ratio")))) or 0.5
+    local leftoverFreebiesChance = math.min(1.0, math.max(0.0, (tonumber(minetest.settings:get("k_recyclebin.leftover_freebies_chance") or 0.8))))
+    local minPartialRecycleRatio = math.min(1.0, math.max(0.0, (tonumber(minetest.settings:get("k_recyclebin.partial_recycling_minimum_ratio") or 0.5))))
 
     local inv = minetest.get_meta(pos):get_inventory()
     local stack = inv:get_stack(recycler.container_input, 1)
@@ -249,7 +252,7 @@ local do_recycle              = function(pos)
         local remainderFreebieChance = leftoverFreebiesChance * (remainderItemsStackSize * remainderLoops) /
             (idealInputCount * idealOutputCount)
 
-        if math.random() < remainderFreebieChance then
+        if math.random() <= remainderFreebieChance then
             fullLoops = fullLoops + 1
             remainderLoops = 0
         end
@@ -270,7 +273,7 @@ local do_recycle              = function(pos)
 
     -- jitter somewhat to reduce item duplication
     -- should have at least half required stack, if not do a passthrough
-    if minPartialRecycleRatio < (remainderItemsStackSize / idealInputCount) then
+    if minPartialRecycleRatio > (remainderItemsStackSize / idealInputCount) then
         -- some leftovers may be discarded.
         local leftoverStack = ItemStack(recipeOutput)
         leftoverStack:set_count(remainderItemsStackSize)
@@ -406,7 +409,7 @@ local thedef                  = {
             and not stack:is_empty()
         then
             if do_recycle(pos) then
-                minetest.log("info", string.format("Recylebin: %s recycled %", player:get_name(), stack:to_string()))
+                minetest.log("info", string.format("Recylebin: %s recycled %s.", player:get_player_name(), stack:to_string()))
             else
                 -- something else
             end
