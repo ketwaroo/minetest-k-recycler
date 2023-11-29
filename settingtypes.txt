@@ -1,0 +1,8 @@
+# Enable Free whole item generation if input stack is close enough to idea.
+# Otherwise incomplete stacks will just pass through.
+k_recyclebin.enable_freebies (Enable Freebies) bool true
+
+# Minimum stack ratio to allow partial recycling.
+# 0.0 disables it and any extra items that can't be recycled will just pass through or get discarted if there's no space on the output grid.
+# 1.0 always try partial recycling. May cause free stuff.
+k_recyclebin.partial_recycling_minimum_ratio (Partial Recycling Minimum stack Ratio) float 0.5 0.0 1.0
