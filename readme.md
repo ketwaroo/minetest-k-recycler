@@ -2,7 +2,7 @@
 
 Recycles things. Because having a lava pool around just to destroy trash is an OSHA violation. I keep picking up horse armor and I don't even have a horse.
 
-Works with minetest base game and mineclonia but built mostly because of miclonia. Won't support mineclone2 since it's a bit outdated and the cherry blossom trees look not so good in that one.
+Works with minetest base game and mineclonia but built mostly because of mineclonia. Won't support mineclone2 since it's a bit outdated and the cherry blossom trees look not so good in that one.
 
 
 ## Limitations, todos, and known bugs
