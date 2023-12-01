@@ -1,0 +1,11 @@
+{
+    "type": "MOD",
+    "title": "K Recyclebin",
+    "short_description": "Breaks down things into original components. Mostly.. Compatible with default game and mineclonia. Works with hoppers too. Review limitations before installing.",
+    "dev_state": "ACTIVELY_DEVELOPED",
+    "tags": ["crafting"],
+    "license": "GPL-3.0-or-later",
+    "media_license": "GPL-3.0-or-later",
+    "issue_tracker": "https://github.com/ketwaroo/minetest-k-recycler/issues",
+    "repo": "https://github.com/ketwaroo/minetest-k-recycler"
+}
