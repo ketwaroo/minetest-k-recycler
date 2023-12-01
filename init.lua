@@ -134,26 +134,15 @@ local get_first_normal_recipe = function(stack)
                         inputStackCount = 0,
                     }
 
-                    local rowWidth = tmp.width
-
                     -- full grid or formless already fit
-                    if rowWidth == 3 or rowWidth == 0 then
+                    if tmp.width == 3 or tmp.width == 0 then
                         recycler.recipe_cache[itemname].recipe = table.copy(tmp.items)
                     else
-                        -- fake smaller width
-                        for k, itm in ipairs(tmp.items) do
-                            table.insert(recycler.recipe_cache[itemname].recipe, itm)
-
-                            rowWidth = rowWidth - 1
-                            -- used up row and not at end of item list.
-                            if rowWidth == 0 then
-                                -- pad the rest of the row with empty
-                                for i = (3 - tmp.width), 1, -1 do
-                                    table.insert(recycler.recipe_cache[itemname].recipe, "")
-                                end
-                                -- reset for next row
-                                rowWidth = tmp.width
-                            end
+                        -- shift index to fit a 3x3 grid
+                        for k, itm in pairs(tmp.items) do
+                            local colNum = math.floor((k - 1) / tmp.width)
+                            local newK = k + (colNum * (3 - tmp.width))
+                            recycler.recipe_cache[itemname].recipe[newK] = itm
                         end
                     end
 
