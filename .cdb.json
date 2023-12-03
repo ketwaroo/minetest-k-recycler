@@ -1,7 +1,7 @@
 {
     "type": "MOD",
     "title": "K Recyclebin",
-    "short_description": "Breaks down things into original components. Mostly.. Compatible with default game and mineclonia. Works with hoppers too. Review limitations before installing.",
+    "short_description": "Breaks down crafted things into original components. Mostly.. Compatible with default game and mineclonia. Works with hoppers too.",
     "dev_state": "ACTIVELY_DEVELOPED",
     "tags": ["crafting"],
     "license": "GPL-3.0-or-later",

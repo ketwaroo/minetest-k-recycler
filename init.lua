@@ -23,7 +23,7 @@ minetest.register_on_mods_loaded(function()
         minetest.registered_tools,
 
     }) do
-        -- get first item in group for quick lookup
+        -- get first 5 item in group for quick lookup
         -- wontfix: this is random because lua... bug becomes feature.
         for _, def in pairs(lst) do
             if def.groups then
