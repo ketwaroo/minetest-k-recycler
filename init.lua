@@ -204,7 +204,7 @@ end
 -- @returns boolean
 local do_recycle              = function(pos)
     -- reread at each run in case you use the /set command.
-    local leftoverFreebiesChance = math.min(1.0, math.max(0.0, (tonumber(minetest.settings:get("k_recyclebin.leftover_freebies_chance") or 0.8))))
+    local leftoverFreebiesChance = math.min(1.0, math.max(0.0, (tonumber(minetest.settings:get("k_recyclebin.leftover_freebies_chance") or 0.05))))
     local minPartialRecycleRatio = math.min(1.0, math.max(0.0, (tonumber(minetest.settings:get("k_recyclebin.partial_recycling_minimum_ratio") or 0.5))))
 
     local inv = minetest.get_meta(pos):get_inventory()
@@ -451,7 +451,8 @@ if currentGame == "minetest" then
             { "default:steel_ingot", "default:chest",        "default:steel_ingot" },
         }
     })
-    -- mineclonia
+
+-- mineclonia
 elseif currentGame == "mineclonia" then
     thedef.sounds = mcl_sounds.node_sound_metal_defaults()
 
