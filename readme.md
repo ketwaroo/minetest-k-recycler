@@ -36,7 +36,7 @@ For example in `minetest` game, 6 wood blocks -> 8 wood stairs. To get back exac
 
 The `k_recyclebin.partial_recycling_minimum_ratio` setting contols partial recycling somewhat. By default, it has a value of `0.5`, which means you need at leart half a full input stack to allow partial recycling. So if you supply 2 torches you will end up with either 1 coal or 1 stick. But recycling only 1 torch will most likely pass through unchanged.
 
-IMPORTANT: Note that passtrough currently can cause loss of source material if the output grid is full and there's no space to add the overflow. This is fine since the recycling bin is only supposed to be a way to reclaim some trash.
+IMPORTANT: Note that passtrough of leftover material currently can cause loss of source material if the output grid is full and there's no space to add the overflow. This is fine since the recycling bin is only supposed to be a way to reclaim some trash.
 
 ### Freebies
 
@@ -44,11 +44,20 @@ Another "feature" of this recyling bin is allowing freebies when recycling parti
 
 Infinite item exploit. You're welcome. Well not really, it's basically a gamble if you'll get a free item and it's usually faster to just mine/farm things. But it's a little more fun if there's some randomness involved. See `k_recyclebin.leftover_freebies_chance` settings to tweak it slightly or disable it.
 
-### Hoppers
+### Hopper support
 
-For `mineclonia`, hoppers can be used to automate processing. A reasonable shematic would be Chest -> recycler -> chest where `->` is a hopper. That way you can dump all the loot you don't care about in the top chest and collect materials later.
+Supports `mineclonia` hopper API fairly well and partially supports the (FaceDeer hopper mod)[https://content.minetest.net/packages/FaceDeer/hopper/].
 
-The hopper should try to wait until a minimum stack is available but will eventually just push trough.
+Hoppers can be used to automate processing. A reasonable shematic would be Chest -> recycler -> chest where `->` is a hopper. That way you can dump all the loot you don't care about in the top chest and collect materials from the bottom one later.
+
+In `mineclonia`, the hopper should try to wait until a minimum stack is available but will eventually just push trough. So if you put a stack of 7 torches in the input hopper, it will wait until 4 torches are loaded in the recycle bin and then trigger a recyle and flush out items to output hopper. For the remaning 3 torches, it will wait an extra couple ticks in case additional items are being added but will just try to recycle that stack of 3, resulting in either a partial recycle or a freebie if lucky.
+
+The FaceDeer hopper mod, however will just push one item at a time. This means that stack of items may not get processed properly with the hopper mod. Single stack items like weapons, armor, tools get processed just fine though.
+
+The difference is that FaceDeer mod simulates a player moving the items one at a time and I haven't found a reliable way to determine if it's a player doing the item adding or if it's the hopper in order to wait for a minimum stack. `mineclonia`'s hopper API is more manual and allows for more ~~hacky workarounds~~ finetuning.
+
+I may eventually find a better solution to this, but for now, works as is.
+
 
 ## Limitations, todos, and known bugs
 

@@ -438,6 +438,15 @@ local thedef                  = {
     end,
 }
 
+-- facedeer/tenplusone hoppers
+if minetest.get_modpath("hopper") then
+    hopper:add_container({
+        { "top",    "k_recyclebin:recyclebin", recycler.container_output },
+        { "bottom", "k_recyclebin:recyclebin", recycler.container_input },
+        { "side",   "k_recyclebin:recyclebin", recycler.container_input },
+    })
+end
+
 -- minetest
 if currentGame == "minetest" then
     thedef.sounds = default.node_sound_stone_defaults()
