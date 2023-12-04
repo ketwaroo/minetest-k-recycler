@@ -6,11 +6,11 @@ Works with minetest base game and mineclonia but built mostly because of mineclo
 
 ## Crafting the recyclebin
 
-In `minetest`, you'll need steel ingot, diamond block, furnace, and chest to unlock the recipe.
+In `minetest`, you'll need steel ingots, diamond block, furnace, and chest to unlock the recipe.
 
-In `mineclonia`, you'll need iron ingot, redstone block, furnace, composter, crafting table, and chest to unlock the recipe.
+In `mineclonia`, you'll need iron ingots, redstone block, furnace, composter, crafting table, and chest to unlock the recipe.
 
-`minetest` and `mineclonia` have different recipes for no reason other whan aesthetics.
+`minetest` and `mineclonia` have different recipes for no reason other than aesthetics.
 
 ## Usage
 
@@ -40,13 +40,13 @@ IMPORTANT: Note that passtrough of leftover material currently can cause loss of
 
 ### Freebies
 
-Another "feature" of this recyling bin is allowing freebies when recycling partial stacks.  There's some none zero change you'll get a full item if close enough to original stack. So a stack of 3 torches can give you a full 1 coal + 1 stick.
+Another "feature" of this recyling bin is allowing freebies when recycling partial stacks.  There's some none zero change (default is less than 5%) you'll get a full item if close enough to original stack. So a stack of 3 torches can give you a full 1 coal + 1 stick.
 
 Infinite item exploit. You're welcome. Well not really, it's basically a gamble if you'll get a free item and it's usually faster to just mine/farm things. But it's a little more fun if there's some randomness involved. See `k_recyclebin.leftover_freebies_chance` settings to tweak it slightly or disable it.
 
 ### Hopper support
 
-Supports `mineclonia` hopper API fairly well and partially supports the (FaceDeer hopper mod)[https://content.minetest.net/packages/FaceDeer/hopper/].
+Supports `mineclonia` hopper API fairly well and partially supports the [FaceDeer hopper mod](https://content.minetest.net/packages/FaceDeer/hopper/).
 
 Hoppers can be used to automate processing. A reasonable shematic would be Chest -> recycler -> chest where `->` is a hopper. That way you can dump all the loot you don't care about in the top chest and collect materials from the bottom one later.
 
