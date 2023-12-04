@@ -18,17 +18,15 @@ In `mineclonia`, you'll need iron ingot, redstone block, furnace, composter, cra
 
 Left single slot accepts the input, output preview will appear in rightmost 3x3 grid. Your inventory should be in the bottom.
 
-You can still cancel the recycle operation by removing the input item.
-
-Taking an item from the 3x3 grid into your main inventory will count as confirming the recycle operation and destroy the input item.
+You can  cancel the recycle operation by removing the input item. However,  taking an item from the 3x3 grid into your main inventory will count as confirming the recycle operation and destroy the input item.
 
 ### Unrecyclable items
 
-Items that can't be broken down or have insufficiant stack size will simply "pass through" the recycle bin and appear unchanged in the output grid.
+Items that can't be broken down or have insufficient stack size will simply "pass through" the recycle bin and appear unchanged in the output grid.
 
-The recycle bin will try not to destroy input items (mostly) so you might want to keep that lava pool around.
+The recycle bin will try not to destroy unrecyclable input items (mostly) so you might want to keep that lava pool around.
 
-### Recyling items that generate multiples.
+### Recyling items that generate stacks of multiple items.
 
 Recipes often produce stacks of items. 1 coal + 1 stick  = 4 torches. Which means that ideally, you'd want to enter a stack of 4 torches as input to get 1 stick and coal as output.
 
@@ -36,13 +34,13 @@ However you rarely have exact multiples of items. The recycle bin addresses that
 
 For example in `minetest` game, 6 wood blocks -> 8 wood stairs. To get back exactly 6 wood blocks you need to recycle a stack with 8 stairs. Or multiples thereof. The code currently tries to ratio the source:output quantities so that if you recycle 4 wood stairs, you can expect to get 3 wood blocks. Due to rounding, you'll sometimes end up with 1 extra/less ingredients when the stack quantities aren't ideal factors.
 
-The `k_recyclebin.partial_recycling_minimum_ratio` setting contols partial recycling somewhat. By default, it has a value of `0.5`, which means you need at leart half a full input stack to allow partial recycling. So if you supply 2 torches you will end up with either 1 coal or 1 stick.
+The `k_recyclebin.partial_recycling_minimum_ratio` setting contols partial recycling somewhat. By default, it has a value of `0.5`, which means you need at leart half a full input stack to allow partial recycling. So if you supply 2 torches you will end up with either 1 coal or 1 stick. But recycling only 1 torch will most likely pass through unchanged.
 
 IMPORTANT: Note that passtrough currently can cause loss of source material if the output grid is full and there's no space to add the overflow. This is fine since the recycling bin is only supposed to be a way to reclaim some trash.
 
-Another "feature" is allowing freebies when recycling partial stacks. 
+### Freebies
 
-There's some none zero change you'll get a full item if close enough to original stack. So a stack of 3 torches can give you a full 1 coal + 1 stick.
+Another "feature" of this recyling bin is allowing freebies when recycling partial stacks.  There's some none zero change you'll get a full item if close enough to original stack. So a stack of 3 torches can give you a full 1 coal + 1 stick.
 
 Infinite item exploit. You're welcome. Well not really, it's basically a gamble if you'll get a free item and it's usually faster to just mine/farm things. But it's a little more fun if there's some randomness involved. See `k_recyclebin.leftover_freebies_chance` settings to tweak it slightly or disable it.
 
