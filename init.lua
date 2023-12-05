@@ -41,6 +41,14 @@ minetest.register_on_mods_loaded(function()
     end
 end)
 
+-- items should move from main to input, input to main, output to main on shift click
+-- @todo input to main doesn't seem to work as expected..
+local formspecListring = "listring[current_player;main]" ..
+    "listring[context;" .. recycler.container_input .. "]" ..
+    "listring[current_player;main]" ..
+    "listring[context;" .. recycler.container_output .. "]" ..
+    "listring[current_player;main]"
+
 if currentGame == "minetest" then
     recycler.formspec = "size[8,8.5]" ..
         "list[current_player;main;0,4.25;8,1;]" ..
@@ -48,9 +56,7 @@ if currentGame == "minetest" then
         "list[context;" .. recycler.container_input .. ";1.5,1.5;1,1;]" ..
         "list[context;" .. recycler.container_output .. ";3.5,0.5;3,3;]" ..
         "image[2.5,1.5;1,1;gui_furnace_arrow_bg.png^[transformR270]" ..
-        "listring[current_player;main]" ..
-        "listring[context;" .. recycler.container_input .. "]" ..
-        "listring[context;" .. recycler.container_output .. "]" ..
+        formspecListring ..
         default.get_hotbar_bg(0, 4.25)
 elseif currentGame == "mineclonia" then
     recycler.formspec = table.concat({
@@ -75,9 +81,7 @@ elseif currentGame == "mineclonia" then
         mcl_formspec.get_itemslot_bg_v4(0.375, 9.05, 9, 1),
         "list[current_player;main;0.375,9.05;9,1;]",
 
-        "listring[context;" .. recycler.container_input .. "]",
-        "listring[context;" .. recycler.container_output .. "]",
-        "listring[current_player;main]",
+        formspecListring,
 
     })
 end
@@ -435,6 +439,10 @@ local thedef                  = {
         end
 
         return count
+    end,
+
+    on_rightclick = function(pos, node, clicker, itemstack, pointed_thing)
+        print("on_rightclick " .. dump(pos) .. dump(node) .. dump(pointed_thing))
     end,
 }
 
