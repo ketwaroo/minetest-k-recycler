@@ -12,6 +12,7 @@ local recycler = {
     container_output = "output",
     group_lookup = {},
     recipe_cache = {},
+    hopper_mode_timeout = 3, -- wait in seconds. should be bigger than rate hopper is pushing items by default. might be a race condition waiting to happen.
 }
 
 minetest.register_on_mods_loaded(function()
@@ -41,49 +42,73 @@ minetest.register_on_mods_loaded(function()
     end
 end)
 
--- items should move from main to input, input to main, output to main on shift click
--- @todo input to main doesn't seem to work as expected..
-local formspecListring = "listring[current_player;main]" ..
-    "listring[context;" .. recycler.container_input .. "]" ..
-    "listring[current_player;main]" ..
-    "listring[context;" .. recycler.container_output .. "]" ..
-    "listring[current_player;main]"
+local get_recycler_formspec   = function(pos)
+    local formspecString
 
-if currentGame == "minetest" then
-    recycler.formspec = "size[8,8.5]" ..
-        "list[current_player;main;0,4.25;8,1;]" ..
-        "list[current_player;main;0,5.5;8,3;8]" ..
-        "list[context;" .. recycler.container_input .. ";1.5,1.5;1,1;]" ..
-        "list[context;" .. recycler.container_output .. ";3.5,0.5;3,3;]" ..
-        "image[2.5,1.5;1,1;gui_furnace_arrow_bg.png^[transformR270]" ..
-        formspecListring ..
-        default.get_hotbar_bg(0, 4.25)
-elseif currentGame == "mineclonia" then
-    recycler.formspec = table.concat({
-        "formspec_version[4]",
-        "size[11.75,10.425]",
+    local meta = minetest.get_meta(pos)
 
-        "label[2.25,0.375;" .. F(C(mcl_formspec.label_color, S("Recycling"))) .. "]",
+    local hopperMode = "false"
 
-        mcl_formspec.get_itemslot_bg_v4(2, 2, 1, 1, 0.2),
-        "list[context;" .. recycler.container_input .. ";2,2;1,1;]",
 
-        "image[3.5,2;1.5,1;gui_crafting_arrow.png]",
+    if 1 == meta:get_int("hopper_mode") then
+        hopperMode = "true"
+    end
 
-        mcl_formspec.get_itemslot_bg_v4(5.5, 1, 3, 3),
-        "list[context;" .. recycler.container_output .. ";5.5,1;3,3;]",
+    if currentGame == "minetest" then
+        formspecString = "size[8,8.5]" ..
+            "list[current_player;main;0,4.25;8,1;]" ..
+            "list[current_player;main;0,5.5;8,3;8]" ..
+            "list[context;" .. recycler.container_input .. ";1.5,1.5;1,1;]" ..
+            "list[context;" .. recycler.container_output .. ";3.5,0.5;3,3;]" ..
+            "image[2.5,1.5;1,1;gui_furnace_arrow_bg.png^[transformR270]" ..
+            default.get_hotbar_bg(0, 4.25)
+    elseif currentGame == "mineclonia" then
+        formspecString = table.concat({
+            "formspec_version[4]",
+            "size[11.75,10.425]",
 
-        "label[0.375,4.7;" .. F(C(mcl_formspec.label_color, S("Inventory"))) .. "]",
+            "label[2.25,0.5;" .. F(C(mcl_formspec.label_color, S("Recycling"))) .. "]",
 
-        mcl_formspec.get_itemslot_bg_v4(0.375, 5.1, 9, 3),
-        "list[current_player;main;0.375,5.1;9,3;9]",
+            mcl_formspec.get_itemslot_bg_v4(2, 1.875, 1, 1, 0.2),
+            "list[context;" .. recycler.container_input .. ";2,1.875;1,1;]",
 
-        mcl_formspec.get_itemslot_bg_v4(0.375, 9.05, 9, 1),
-        "list[current_player;main;0.375,9.05;9,1;]",
+            "image[3.5,1.875;1.5,1;gui_crafting_arrow.png]",
 
-        formspecListring,
+            mcl_formspec.get_itemslot_bg_v4(5.5, 0.875, 3, 3),
+            "list[context;" .. recycler.container_output .. ";5.5,0.875;3,3;]",
 
-    })
+            "label[0.375,4.7;" .. F(C(mcl_formspec.label_color, S("Inventory"))) .. "]",
+
+            mcl_formspec.get_itemslot_bg_v4(0.375, 5.1, 9, 3),
+            "list[current_player;main;0.375,5.1;9,3;9]",
+
+            mcl_formspec.get_itemslot_bg_v4(0.375, 9.05, 9, 1),
+            "list[current_player;main;0.375,9.05;9,1;]",
+
+        })
+    end
+
+    -- only for games with the hopper mod
+    -- probably incompatible with mineclonia hopper API
+    if minetest.get_modpath("hopper") then
+        formspecString = formspecString .. "checkbox[3.5,3.25;hopper_mode;" .. F(S("Hopper Mode")) .. ";" .. hopperMode .. "]" ..
+            "tooltip[hopper_mode;" .. F(S(
+                "Hopper Mode forces recycle bin to wait until a\n" ..
+                "certain minimum number of items are fed into input\n" ..
+                "before processing.\n" ..
+                "For best results, use when connected with hoppers."))
+            .. "]"
+    end
+
+    -- items should move from main to input, input to main, output to main on shift click
+    formspecString = formspecString ..
+        "listring[current_player;main]" ..
+        "listring[context;" .. recycler.container_input .. "]" ..
+        "listring[current_player;main]" ..
+        "listring[context;" .. recycler.container_output .. "]" ..
+        "listring[current_player;main]"
+
+    return formspecString
 end
 
 -- test if an inventory list is empty
@@ -203,6 +228,20 @@ local populate_output_grid    = function(pos, recipe, multiplier)
     end
 end
 
+local hopper_mode_timer_start = function(pos)
+    local timer = minetest.get_node_timer(pos)
+    if not timer:is_started() then
+        timer:start(recycler.hopper_mode_timeout)
+    end
+end
+
+local hopper_mode_timer_stop  = function(pos)
+    local timer = minetest.get_node_timer(pos)
+    if timer:is_started() then
+        timer:stop()
+    end
+end
+
 -- attempt recycling
 -- @param pos vector
 -- @returns boolean
@@ -210,28 +249,58 @@ local do_recycle              = function(pos)
     -- reread at each run in case you use the /set command.
     local leftoverFreebiesChance = math.min(1.0, math.max(0.0, (tonumber(minetest.settings:get("k_recyclebin.leftover_freebies_chance") or 0.05))))
     local minPartialRecycleRatio = math.min(1.0, math.max(0.0, (tonumber(minetest.settings:get("k_recyclebin.partial_recycling_minimum_ratio") or 0.5))))
-
-    local inv = minetest.get_meta(pos):get_inventory()
+    local meta = minetest.get_meta(pos)
+    local inv = meta:get_inventory()
     local stack = inv:get_stack(recycler.container_input, 1)
     if
         inv_is_empty(inv, recycler.container_input)
+        or not inv_is_empty(inv, recycler.container_output)
     then
         -- might  be emptying output
         --print("do_recycle skip")
         return false
     end
 
-    local recipe, recipeOutput, recipeItemCount = get_first_normal_recipe(stack)
+    local recipe, recipeOutput, idealOutputCount = get_first_normal_recipe(stack)
 
-    if recipeItemCount < 1 then
+    if idealOutputCount < 1 then
         return false
     end
 
     -- determine ratio of items we can recycle
-    local idealInputStack         = ItemStack(recipeOutput)
+    local idealInputStack = ItemStack(recipeOutput)
+    local idealInputCount = idealInputStack:get_count()
 
-    local idealInputCount         = idealInputStack:get_count()
-    local idealOutputCount        = recipeItemCount
+    -- if in hopperMode, wait until a mimimum stack is available.
+    if 1 == meta:get_int("hopper_mode") then
+        -- bit messy wait logic to try and get a minimum usable stack.
+        local hopperWaited = false
+
+        if (meta:get_int("hopper_wait") > 0) then
+            -- stack is driven by hopper abm at this point
+            hopper_mode_timer_stop(pos)
+            meta:set_int("hopper_wait", meta:get_int("hopper_wait") - 1)
+            if meta:get_int("hopper_wait") == 0 then
+                hopperWaited = true
+            else
+                -- print("wait 1 " .. meta:get_int("hopper_wait") .. " stack " .. stack:to_string())
+                hopper_mode_timer_start(pos)
+                return false
+            end
+        end
+
+        if not hopperWaited and stack:get_count() < idealInputStack:get_count() then
+            -- wait a bit more than min amount of extra items to push.
+            meta:set_int("hopper_wait", idealInputStack:get_count() - stack:get_count())
+            -- print("wait 2 " .. meta:get_int("hopper_wait") .. " stack " .. stack:to_string())
+            -- does not not have a full stack and hopper could be out of items
+            -- start timer again.
+            hopper_mode_timer_start(pos)
+            return false
+        else
+            meta:set_int("hopper_wait", 0)
+        end
+    end
 
     -- number of full loops + remainders.
     local fullLoops               = math.floor(stack:get_count() / idealInputCount)
@@ -250,7 +319,6 @@ local do_recycle              = function(pos)
             remainderLoops = 0
         end
     end
-
 
     -- refresh
     inv_clear(pos, recycler.container_output)
@@ -283,7 +351,7 @@ local do_recycle              = function(pos)
         end
         table.shuffle(recipeKeys)
 
-        -- shoud always be an item in there and remainder is less than recipeItemCount
+        -- shoud always be an item in there and remainder is less than idealOutputCount
         for _, outindex in pairs(recipeKeys) do
             if remainderLoops > 0 then
                 local itx = recipe[outindex]
@@ -342,14 +410,25 @@ local thedef                  = {
         local inv = meta:get_inventory()
         inv:set_size(recycler.container_input, 1)
         inv:set_size(recycler.container_output, 3 * 3)
-        meta:set_string("formspec", recycler.formspec)
+
+        meta:set_int("hopper_mode", 0)
         meta:set_int("hopper_wait", 0)
+        meta:set_string("formspec", get_recycler_formspec(pos))
     end,
 
 
     on_receive_fields = function(pos, formname, fields, sender)
-        -- might do something here later.
-        --print("on_receive_fields: "..dump(formname) .. ", " ..dump(fields))
+        -- print("on_receive_fields: " .. dump(formname) .. ", " .. dump(fields))
+        local meta = minetest.get_meta(pos)
+        if fields.hopper_mode then
+            if "true" == fields.hopper_mode then
+                meta:set_int("hopper_mode", 1)
+            else
+                meta:set_int("hopper_mode", 0)
+            end
+            -- refresh formspec
+            meta:set_string("formspec", get_recycler_formspec(pos))
+        end
     end,
 
     after_dig_node = function(pos, oldnode, oldmetadata, digger) -- Modified from the one of furnaces
@@ -370,9 +449,9 @@ local thedef                  = {
     end,
 
     on_destruct = function(pos)
-        -- should do something here I feel
         local meta = minetest.get_meta(pos)
         meta:set_string("formspec", "")
+        meta:set_int("hopper_mode", 0)
         meta:set_int("hopper_wait", 0)
     end,
 
@@ -440,10 +519,14 @@ local thedef                  = {
 
         return count
     end,
-
-    on_rightclick = function(pos, node, clicker, itemstack, pointed_thing)
-        print("on_rightclick " .. dump(pos) .. dump(node) .. dump(pointed_thing))
-    end,
+    on_timer = function(pos, elapsed)
+        if (1 == minetest.get_meta(pos):get_int("hopper_mode")) then
+            local loops = math.ceil(elapsed / recycler.hopper_mode_timeout)
+            for i = 1, loops, 1 do
+                do_recycle(pos)
+            end
+        end
+    end
 }
 
 -- facedeer/tenplusone hoppers
@@ -469,74 +552,60 @@ if currentGame == "minetest" then
         }
     })
 
--- mineclonia
+    -- mineclonia
 elseif currentGame == "mineclonia" then
     thedef.sounds = mcl_sounds.node_sound_metal_defaults()
 
     thedef._on_hopper_in = function(hopper_pos, to_pos)
-        -- try to pull ideal amount items for a full recycle
         local meta = minetest.get_meta(to_pos)
         local inv = meta:get_inventory()
 
-        local hopperInv = minetest.get_meta(hopper_pos):get_inventory()
-
         -- skip is in process of emptying or still processing
-        if
-            not inv_is_empty(inv, recycler.container_input)
-            or not inv_is_empty(inv, recycler.container_output)
-        then
-            --print("_on_hopper_in skip")
+        if not inv_is_empty(inv, recycler.container_output) then
+            --print("_on_hopper_in skip 1")
             return false
         end
 
+        -- force hopper_mode off in mineclonia if connected to a hopper
+        meta:set_int("hopper_mode", 1)
+        meta:set_string("formspec", get_recycler_formspec(to_pos))
+
+        local hopperInv = minetest.get_meta(hopper_pos):get_inventory()
         local slotId = mcl_util.get_first_occupied_inventory_slot(hopperInv, "main")
 
         if not slotId then
             return false
         end
 
-        local inputStack = hopperInv:get_stack("main", slotId)
-        if not inputStack then
+        local hopperStack = hopperInv:get_stack("main", slotId)
+
+        if not hopperStack then
             return false
         end
 
-        local _, recipeOutput, _ = get_first_normal_recipe(inputStack)
+        local inputStack = inv:get_stack(recycler.container_input, 1)
 
+        -- skip is in process of loading items
+        if
+            not inv_is_empty(inv, recycler.container_input)
+            and hopperStack:get_name() ~= inputStack:get_name()
+        then
+            --print("_on_hopper_in skip 2")
+            return false
+        end
+
+        local _, recipeOutput, _ = get_first_normal_recipe(hopperStack)
         local idealRecipeStack   = ItemStack(recipeOutput)
-        local itemToMoveCount    = math.min(inputStack:get_count(), idealRecipeStack:get_count())
 
-        -- bit messy wait logic to try and get a minimum usable stack.
-        local hopperWaited       = false
-
-        if (meta:get_int("hopper_wait") > 0) then
-            meta:set_int("hopper_wait", meta:get_int("hopper_wait") - 1)
-            if meta:get_int("hopper_wait") == 0 then
-                hopperWaited = true
-            else
-                return false
+        local sucked             = false
+        -- try to load at least one stack if available
+        if inputStack:get_count() < idealRecipeStack:get_count() then
+            for i = 1, idealRecipeStack:get_count() - inputStack:get_count(), 1 do
+                sucked = mcl_util.move_item_container(hopper_pos, to_pos, nil, nil, recycler.container_input)
             end
         end
 
-        if not hopperWaited and itemToMoveCount < idealRecipeStack:get_count() then
-            -- wait a bit more than min amount of extra items to push.
-            -- wonky but close enough
-            meta:set_int("hopper_wait", 2 + idealRecipeStack:get_count() - itemToMoveCount)
-
-            return false
-        else
-            meta:set_int("hopper_wait", 0)
-        end
-
-        -- move full stack into recycler if possible
-        local sucked = false
-
-        while itemToMoveCount > 0 do
-            itemToMoveCount = itemToMoveCount - 1
-            -- reuse built in util because there may be oddities it takes of.
-            sucked = mcl_util.move_item_container(hopper_pos, to_pos, nil, nil, recycler.container_input)
-        end
-
-        -- hopper doesn't trigger on_put
+        -- manually trigger recycle
         do_recycle(to_pos)
 
         return sucked
@@ -546,7 +615,6 @@ elseif currentGame == "mineclonia" then
         -- Suck items from the container into the hopper
         local sucked = mcl_util.move_item_container(from_pos, hopper_pos, recycler.container_output)
 
-        local inv = minetest.get_meta(from_pos):get_inventory()
         if sucked then
             -- clear input when we take retrieve items from output.
             -- hopper doesn't trigger on_take

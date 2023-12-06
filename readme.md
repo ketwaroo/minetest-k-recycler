@@ -46,18 +46,17 @@ Infinite item exploit. You're welcome. Well not really, it's basically a gamble 
 
 ### Hopper support
 
-Supports `mineclonia` hopper API fairly well and partially supports the [FaceDeer hopper mod](https://content.minetest.net/packages/FaceDeer/hopper/).
+Supports `mineclonia` hopper API and the [FaceDeer hopper mod](https://content.minetest.net/packages/FaceDeer/hopper/). Well, as long as you don't look at the inner workings too closely, it's usable.
 
 Hoppers can be used to automate processing. A reasonable shematic would be Chest -> recycler -> chest where `->` is a hopper. That way you can dump all the loot you don't care about in the top chest and collect materials from the bottom one later.
 
-In `mineclonia`, the hopper should try to wait until a minimum stack is available but will eventually just push trough. So if you put a stack of 7 torches in the input hopper, it will wait until 4 torches are loaded in the recycle bin and then trigger a recyle and flush out items to output hopper. For the remaning 3 torches, it will wait an extra couple ticks in case additional items are being added but will just try to recycle that stack of 3, resulting in either a partial recycle or a freebie if lucky.
+The recycle bin should try to wait until a minimum ideal stack of items is available but will eventually just push trough. So if you put a stack of 7 torches in the input hopper, it will wait until 4 torches are loaded in the recycle bin and then trigger a recyle and flush out items to output hopper. For the remaning 3 torches, it will wait an few extra ticks in case additional items are being added but will just try to recycle that stack of 3, resulting in either a partial recycle or a freebie if lucky.
 
-The FaceDeer hopper mod, however will just push one item at a time. This means that stack of items may not get processed properly with the hopper mod. Single stack items like weapons, armor, tools get processed just fine though.
+Note that not all edge cases with hoppers have been discovered or even considered. Stack of items may still not get fed in properly. Single stack items like weapons, armor, tools get processed just fine though.
 
-The difference is that FaceDeer mod simulates a player moving the items one at a time and I haven't found a reliable way to determine if it's a player doing the item adding or if it's the hopper in order to wait for a minimum stack. `mineclonia`'s hopper API is more manual and allows for more ~~hacky workarounds~~ finetuning.
+When using `mineclonia`, the recyclebin will automatically detect if connected to a hopper and enter something called `Hopper Mode`. When using the `hopper` mod, you will have to manually check the `Hopper Mode` checkbox in the recyle bin UI after connecting it to hoppers. Note that you can use `Hopper mode` without connecting to hopper but all that does is add an awkward 3 seconds delay before processing what ever stack of item you manually input.
 
-I may eventually find a better solution to this, but for now, works as is.
-
+The `hopper` mod simulates a player moving the items one at a time and I haven't found a reliable way to determine if it's a player doing the item adding or if it's the hopper in order to wait for a minimum stack. And rather than replicating the logic from the ABM definition to figure out which hopper is connected to what, I just added the manual check. `mineclonia`'s hopper API is more manual and allows for more ~~hacky workarounds~~ finetuning and control.
 
 ## Limitations, todos, and known bugs
 
