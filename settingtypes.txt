@@ -4,6 +4,9 @@
 k_recyclebin.leftover_freebies_chance (Freebie Generation Chance from Leftovers) float 0.05 0.0 1.0
 
 # Minimum stack ratio to allow partial recycling.
-# 0.0 disables it and any extra items that can't be recycled will just pass through or get discarted if there's no space on the output grid.
+# 0.0 disables it and any extra items that can't be recycled will just pass through or get discarded if there's no space on the output grid.
 # 1.0 always try partial recycling. May cause free stuff.
 k_recyclebin.partial_recycling_minimum_ratio (Partial Recycling Minimum stack Ratio) float 0.5 0.0 1.0
+
+# Recyclebin will break down regular enchanted items but not cursed items by default.
+k_recyclebin.recycle_cursed (Recycle Cursed Items [mineclonia mostly]) bool false

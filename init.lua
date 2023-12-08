@@ -5,8 +5,6 @@ local S = minetest.get_translator(minetest.get_current_modname())
 local F = minetest.formspec_escape
 local C = minetest.colorize
 
-local currentGame = minetest.get_game_info().id
-
 local recycler = {
     container_input = "input",
     container_output = "output",
@@ -29,12 +27,14 @@ minetest.register_on_mods_loaded(function()
         for _, def in pairs(lst) do
             if def.groups then
                 for groupname, _ in pairs(def.groups) do
-                    if not recycler.group_lookup[groupname] then
-                        recycler.group_lookup["group:" .. groupname] = {}
+                    -- prepend group: for quicker lookup
+                    local gn = "group:" .. groupname
+                    if not recycler.group_lookup[gn] then
+                        recycler.group_lookup[gn] = {}
                     end
                     -- keep track of a few
-                    if #recycler.group_lookup["group:" .. groupname] < 5 then
-                        table.insert(recycler.group_lookup["group:" .. groupname], def.name)
+                    if #recycler.group_lookup[gn] < 5 then
+                        table.insert(recycler.group_lookup[gn], def.name)
                     end
                 end
             end
@@ -54,7 +54,7 @@ local get_recycler_formspec   = function(pos)
         hopperMode = "true"
     end
 
-    if currentGame == "minetest" then
+    if minetest.get_modpath("default") then
         formspecString = "size[8,8.5]" ..
             "list[current_player;main;0,4.25;8,1;]" ..
             "list[current_player;main;0,5.5;8,3;8]" ..
@@ -62,7 +62,7 @@ local get_recycler_formspec   = function(pos)
             "list[context;" .. recycler.container_output .. ";3.5,0.5;3,3;]" ..
             "image[2.5,1.5;1,1;gui_furnace_arrow_bg.png^[transformR270]" ..
             default.get_hotbar_bg(0, 4.25)
-    elseif currentGame == "mineclonia" then
+    elseif minetest.get_modpath("mcl_formspec") then
         formspecString = table.concat({
             "formspec_version[4]",
             "size[11.75,10.425]",
@@ -147,11 +147,24 @@ end
 
 local get_first_normal_recipe = function(stack)
     local itemname = stack:get_name()
+
+    -- to recycle enchanted items and cursed.
+    if minetest.get_modpath("mcl_grindstone") then
+        if minetest.settings:get_bool("k_recyclebin.recycle_cursed") then
+            itemname = mcl_grindstone.remove_enchant_name(stack)
+        else
+            local newstack = mcl_grindstone.disenchant(stack)
+            if "" ~= newstack then
+                itemname = newstack:get_name()
+            end
+        end
+    end
+
     local recipe = nil
 
-    -- find and chache
+    -- find and cache
     if not recycler.recipe_cache[itemname] then
-        local recipes = minetest.get_all_craft_recipes(stack:get_name())
+        local recipes = minetest.get_all_craft_recipes(itemname)
         local found = false
         -- print(dump(recipes))
         if recipes ~= nil then
@@ -539,7 +552,7 @@ if minetest.get_modpath("hopper") then
 end
 
 -- minetest
-if currentGame == "minetest" then
+if minetest.get_modpath("default") then
     thedef.sounds = default.node_sound_stone_defaults()
     thedef._mcl_blast_resistance = 99 -- creepers can't get into trash cans.
     thedef._mcl_hardness = 3
@@ -553,7 +566,7 @@ if currentGame == "minetest" then
     })
 
     -- mineclonia
-elseif currentGame == "mineclonia" then
+elseif minetest.get_modpath("mcl_util") then
     thedef.sounds = mcl_sounds.node_sound_metal_defaults()
 
     thedef._on_hopper_in = function(hopper_pos, to_pos)

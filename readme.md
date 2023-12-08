@@ -22,7 +22,7 @@ You can  cancel the recycle operation by removing the input item. However,  taki
 
 ### Unrecyclable items
 
-Items that can't be broken down or have insufficient stack size will simply "pass through" the recycle bin and appear unchanged in the output grid.
+Items that can't be broken down, i.e do not have a crafting recipe, or have insufficient stack size will simply "pass through" the recycle bin and appear unchanged in the output grid.
 
 The recycle bin will try not to destroy unrecyclable input items (mostly) so you might want to keep that lava pool around.
 
@@ -84,6 +84,6 @@ For example, assume the following recipe exists `group:coal` + `group:stick` = `
 
 Recycling a torch crafted form coal and stick may yield any combination of `(coal,charcoal)+(stick,bamboo)` depending on what was cached/found at run time. 
 
-### Needs an off switch (mineclonia only)
+### TODO - Needs an off switch (mineclonia only)
 
-TODO - When connected to hoppers, items sucked in are immediately processed and moved along. Might be good idea to have it pausable via redstone or switches.
+When connected to hoppers, items sucked in are immediately processed and moved along. Might be good idea to have it pausable via redstone or switches.
