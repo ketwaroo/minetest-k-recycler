@@ -14,6 +14,7 @@ local recycler = {
 }
 
 minetest.register_on_mods_loaded(function()
+    local groupSampleSize = math.max(1, (tonumber(minetest.settings:get("k_recyclebin.group_item_mapping_sample_size") or 1)))
     for _, lst in ipairs({
         -- things that could be used to craft other things.
         minetest.registered_craftitems,
@@ -22,7 +23,7 @@ minetest.register_on_mods_loaded(function()
         minetest.registered_tools,
 
     }) do
-        -- get first 5 item in group for quick lookup
+        -- get first N item in group for quick lookup
         -- wontfix: this is random because lua... bug becomes feature.
         for _, def in pairs(lst) do
             if def.groups then
@@ -33,13 +34,14 @@ minetest.register_on_mods_loaded(function()
                         recycler.group_lookup[gn] = {}
                     end
                     -- keep track of a few
-                    if #recycler.group_lookup[gn] < 5 then
+                    if #recycler.group_lookup[gn] < groupSampleSize then
                         table.insert(recycler.group_lookup[gn], def.name)
                     end
                 end
             end
         end
     end
+    -- print(dump(recycler.group_lookup))
 end)
 
 local get_recycler_formspec   = function(pos)
