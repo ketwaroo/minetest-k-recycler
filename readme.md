@@ -36,8 +36,6 @@ For example in `minetest` game, 6 wood blocks -> 8 wood stairs. To get back exac
 
 The `k_recyclebin.partial_recycling_minimum_ratio` setting contols partial recycling somewhat. By default, it has a value of `0.5`, which means you need at leart half a full input stack to allow partial recycling. So if you supply 2 torches you will end up with either 1 coal or 1 stick. But recycling only 1 torch will most likely pass through unchanged.
 
-IMPORTANT: Note that passtrough of leftover material currently can cause loss of source material if the output grid is full and there's no space to add the overflow. This is fine since the recycling bin is only supposed to be a way to reclaim some trash.
-
 ### Freebies
 
 Another "feature" of this recyling bin is allowing freebies when recycling partial stacks.  There's some none zero change (default is less than 5%) you'll get a full item if close enough to original stack. So a stack of 3 torches can give you a full 1 coal + 1 stick.
