@@ -88,11 +88,12 @@ local get_recycler_formspec   = function(pos)
         "list[current_player;main;0.5," .. invBarY .. ";" .. invWidth .. ",1;]",
         "list[current_player;main;0.5," .. invGridY .. ";" .. invWidth .. ",3;" .. invWidth .. "]",
         -- destroyMode
-        "checkbox[" .. (inOutPadding + 5.25) .. ",1.0;destroy_mode;" .. F(S("Destroy Mode")) .. ";" .. destroyMode .. "]",
-        "tooltip[destroy_mode;" .. F(S(
-            "Destroy Mode will attempt to break down unrecyclable items.\n" ..
-            "May destroy things.. as the name suggests."
-        )) .. "]"
+        -- TODO. figure out what I wanted to do with this..
+        -- "checkbox[" .. (inOutPadding + 5.25) .. ",1.0;destroy_mode;" .. F(S("Destroy Mode")) .. ";" .. destroyMode .. "]",
+        -- "tooltip[destroy_mode;" .. F(S(
+        --     "Destroy Mode will attempt to break down unrecyclable items.\n" ..
+        --     "May destroy things.. as the name suggests."
+        -- )) .. "]"
     })
 
     -- why backgounds tho
