@@ -3,7 +3,6 @@
 
 local S = minetest.get_translator(minetest.get_current_modname())
 local F = minetest.formspec_escape
-local C = minetest.colorize
 
 local recycler = {
     container_input = "input",
@@ -50,50 +49,69 @@ local get_recycler_formspec   = function(pos)
     local meta = minetest.get_meta(pos)
 
     local hopperMode = "false"
-
+    local destroyMode = "false"
 
     if 1 == meta:get_int("hopper_mode") then
         hopperMode = "true"
     end
 
-    if minetest.get_modpath("default") then
-        formspecString = "size[8,8.5]" ..
-            "list[current_player;main;0,4.25;8,1;]" ..
-            "list[current_player;main;0,5.5;8,3;8]" ..
-            "list[context;" .. recycler.container_input .. ";1.5,1.5;1,1;]" ..
-            "list[context;" .. recycler.container_output .. ";3.5,0.5;3,3;]" ..
-            "image[2.5,1.5;1,1;gui_furnace_arrow_bg.png^[transformR270]" ..
-            default.get_hotbar_bg(0, 4.25)
-    elseif minetest.get_modpath("mcl_formspec") then
-        formspecString = table.concat({
-            "formspec_version[4]",
-            "size[11.75,10.425]",
+    if 1 == meta:get_int("destroy_mode") then
+        destroyMode = "true"
+    end
 
-            "label[2.25,0.5;" .. F(C(mcl_formspec.label_color, S("Recycling"))) .. "]",
+    -- default inventory is 8 wide
+    -- mineclonia is 9
+    local invWidth = 8
+    if minetest.get_modpath("mcl_formspec") then
+        invWidth = 9
+    end
 
-            mcl_formspec.get_itemslot_bg_v4(2, 1.875, 1, 1, 0.2),
-            "list[context;" .. recycler.container_input .. ";2,1.875;1,1;]",
+    local inOutPadding = (invWidth - 5) / 2
 
-            "image[3.5,1.875;1.5,1;gui_crafting_arrow.png]",
+    -- minecraft inv bar is usually at bottom
+    local invBarY = 4
+    local invGridY = 5.5
+    local arrowImg = "gui_furnace_arrow_bg.png^[transformR270]"
+    if minetest.get_modpath("mcl_formspec") then
+        invGridY = 4
+        invBarY = 7.5
+        arrowImg = "gui_crafting_arrow.png"
+    end
 
-            mcl_formspec.get_itemslot_bg_v4(5.5, 0.875, 3, 3),
-            "list[context;" .. recycler.container_output .. ";5.5,0.875;3,3;]",
+    formspecString = table.concat({
+        "size[" .. (invWidth + 1) .. ",8.5]",
+        "label[0.25,0;" .. F(S("Recycling")) .. "]",
+        "list[context;" .. recycler.container_input .. ";" .. inOutPadding .. ",1.5;1,1;]",
+        "image[" .. (inOutPadding + 1) .. ",1.5;1,1;" .. arrowImg .. "]",
+        "list[context;" .. recycler.container_output .. ";" .. (inOutPadding + 2) .. ",0.5;3,3;]",
+        "label[0.25,3;" .. F(S("Inventory")) .. "]",
+        "list[current_player;main;0.5," .. invBarY .. ";" .. invWidth .. ",1;]",
+        "list[current_player;main;0.5," .. invGridY .. ";" .. invWidth .. ",3;" .. invWidth .. "]",
+        -- destroyMode
+        "checkbox[" .. (inOutPadding + 5.25) .. ",1.0;destroy_mode;" .. F(S("Destroy Mode")) .. ";" .. destroyMode .. "]",
+        "tooltip[destroy_mode;" .. F(S(
+            "Destroy Mode will attempt to break down unrecyclable items.\n" ..
+            "May destroy things.. as the name suggests."
+        )) .. "]"
+    })
 
-            "label[0.375,4.7;" .. F(C(mcl_formspec.label_color, S("Inventory"))) .. "]",
-
-            mcl_formspec.get_itemslot_bg_v4(0.375, 5.1, 9, 3),
-            "list[current_player;main;0.375,5.1;9,3;9]",
-
-            mcl_formspec.get_itemslot_bg_v4(0.375, 9.05, 9, 1),
-            "list[current_player;main;0.375,9.05;9,1;]",
-
+    -- why backgounds tho
+    if minetest.get_modpath("mcl_formspec") then
+        formspecString = formspecString .. table.concat({
+            --input
+            mcl_formspec.get_itemslot_bg(inOutPadding, 1.5, 1, 1),
+            -- output
+            mcl_formspec.get_itemslot_bg((inOutPadding + 2), 0.5, 3, 3),
+            -- inventory
+            mcl_formspec.get_itemslot_bg(0.5, invGridY, invWidth, 3),
+            mcl_formspec.get_itemslot_bg(0.5, invBarY, invWidth, 1),
         })
     end
 
     -- only for games with the hopper mod
     -- probably incompatible with mineclonia hopper API
     if minetest.get_modpath("hopper") then
-        formspecString = formspecString .. "checkbox[3.5,3.25;hopper_mode;" .. F(S("Hopper Mode")) .. ";" .. hopperMode .. "]" ..
+        formspecString = formspecString .. "checkbox[" .. (inOutPadding + 5.25) .. ",0.5;hopper_mode;" .. F(S("Hopper Mode")) .. ";" .. hopperMode .. "]" ..
             "tooltip[hopper_mode;" .. F(S(
                 "Hopper Mode forces recycle bin to wait until a\n" ..
                 "certain minimum number of items are fed into input\n" ..
@@ -137,6 +155,16 @@ local inv_clear               = function(pos, listname)
         list[index] = ItemStack("")
     end
     inv:set_list(listname, list)
+end
+
+-- eject a stack of items at a position
+local pop_excess              = function(pos, stack)
+    if stack then
+        stack = ItemStack(stack) -- Ensure it is an ItemStack
+        if not stack:is_empty() then
+            minetest.add_item(pos, stack)
+        end
+    end
 end
 
 local get_item_from_group     = function(groupString)
@@ -353,9 +381,8 @@ local do_recycle              = function(pos)
         -- some leftovers may be discarded.
         local leftoverStack = ItemStack(recipeOutput)
         leftoverStack:set_count(remainderItemsStackSize)
-        if inv:room_for_item(recycler.container_output, leftoverStack) then
-            inv:add_item(recycler.container_output, leftoverStack)
-        end
+        -- pop the rest
+        pop_excess(pos, inv:add_item(recycler.container_output, leftoverStack))
     else
         -- randomize remainders
         local recipeKeys = {}
@@ -428,6 +455,7 @@ local thedef                  = {
 
         meta:set_int("hopper_mode", 0)
         meta:set_int("hopper_wait", 0)
+        meta:set_int("destroy_mode", 0)
         meta:set_string("formspec", get_recycler_formspec(pos))
     end,
 
@@ -441,23 +469,26 @@ local thedef                  = {
             else
                 meta:set_int("hopper_mode", 0)
             end
-            -- refresh formspec
-            meta:set_string("formspec", get_recycler_formspec(pos))
         end
+
+        if fields.destroy_mode then
+            if "true" == fields.destroy_mode then
+                meta:set_int("destroy_mode", 1)
+            else
+                meta:set_int("destroy_mode", 0)
+            end
+        end
+
+        -- refresh formspec
+        meta:set_string("formspec", get_recycler_formspec(pos))
     end,
 
-    after_dig_node = function(pos, oldnode, oldmetadata, digger) -- Modified from the one of furnaces
+    after_dig_node = function(pos, oldnode, oldmetadata, digger)
         if not oldmetadata.inventory then return end
         for _, listname in ipairs({ recycler.container_input, recycler.container_output }) do
             if oldmetadata.inventory[listname] then
                 for _, stack in ipairs(oldmetadata.inventory[listname]) do
-                    if stack then
-                        stack = ItemStack(stack) -- Ensure it is an ItemStack
-                        if not stack:is_empty() then
-                            local drop_offset = vector.new(math.random() - 0.5, 0, math.random() - 0.5)
-                            minetest.add_item(vector.add(pos, drop_offset), stack)
-                        end
-                    end
+                    pop_excess(pos, stack)
                 end
             end
         end
@@ -468,6 +499,7 @@ local thedef                  = {
         meta:set_string("formspec", "")
         meta:set_int("hopper_mode", 0)
         meta:set_int("hopper_wait", 0)
+        meta:set_int("destroy_mode", 0)
     end,
 
     allow_metadata_inventory_put = function(pos, listname, index, stack, player)
