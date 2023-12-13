@@ -10,6 +10,7 @@ local recycler = {
     group_lookup = {},
     recipe_cache = {},
     hopper_mode_timeout = 3, -- wait in seconds. should be bigger than rate hopper is pushing items by default. might be a race condition waiting to happen.
+    default_trash = nil,
 }
 
 minetest.register_on_mods_loaded(function()
@@ -41,6 +42,13 @@ minetest.register_on_mods_loaded(function()
         end
     end
     -- print(dump(recycler.group_lookup))
+
+    -- @todo for destroy mode, need more dynamic way of determining default trash.
+    if minetest.get_modpath("default") then
+        recycler.default_trash = "default:coal_lump"
+    elseif minetest.get_modpath("core") then
+        recycler.default_trash = "mcl_core:coal_lump"
+    end
 end)
 
 local get_recycler_formspec   = function(pos)
@@ -84,16 +92,15 @@ local get_recycler_formspec   = function(pos)
         "list[context;" .. recycler.container_input .. ";" .. inOutPadding .. ",1.5;1,1;]",
         "image[" .. (inOutPadding + 1) .. ",1.5;1,1;" .. arrowImg .. "]",
         "list[context;" .. recycler.container_output .. ";" .. (inOutPadding + 2) .. ",0.5;3,3;]",
-        "label[0.25,3;" .. F(S("Inventory")) .. "]",
+        "label[0.25,3.5;" .. F(S("Inventory")) .. "]",
         "list[current_player;main;0.5," .. invBarY .. ";" .. invWidth .. ",1;]",
         "list[current_player;main;0.5," .. invGridY .. ";" .. invWidth .. ",3;" .. invWidth .. "]",
         -- destroyMode
-        -- TODO. figure out what I wanted to do with this..
-        -- "checkbox[" .. (inOutPadding + 5.25) .. ",1.0;destroy_mode;" .. F(S("Destroy Mode")) .. ";" .. destroyMode .. "]",
-        -- "tooltip[destroy_mode;" .. F(S(
-        --     "Destroy Mode will attempt to break down unrecyclable items.\n" ..
-        --     "May destroy things.. as the name suggests."
-        -- )) .. "]"
+        "checkbox[" .. (inOutPadding + 5.25) .. ",1.0;destroy_mode;" .. F(S("Destroy Mode")) .. ";" .. destroyMode .. "]",
+        "tooltip[destroy_mode;" .. F(S(
+            "Destroy Mode will attempt to break down unrecyclable items.\n" ..
+            "May destroy things.. as the name suggests."
+        )) .. "]"
     })
 
     -- why backgounds tho
@@ -176,8 +183,24 @@ local get_item_from_group     = function(groupString)
     return ""
 end
 
-local get_first_normal_recipe = function(stack)
+-- @todo is this useful?
+local get_destroy_mode_recipe = function(stack)
     local itemname = stack:get_name()
+    -- craft items don't get destroyed.
+    if mintest.registered_craftitems[itemname] then
+        return stack
+    end
+    if (recycler.default_trash) then
+        stack:set_name(recycler.default_trash)
+    end
+    return stack
+end
+
+local get_first_normal_recipe = function(pos, stack)
+    local itemname = stack:get_name()
+
+    local meta = minetest.get_meta(pos)
+    local destroyMode = (1 == meta:get_int("destroy_mode"))
 
     -- to recycle enchanted items and cursed.
     if minetest.get_modpath("mcl_grindstone") then
@@ -235,6 +258,10 @@ local get_first_normal_recipe = function(stack)
 
         -- fallback, passtrough if no recipes found.
         if not found then
+            if destroyMode then
+                stack = get_destroy_mode_recipe(stack)
+            end
+
             local tmp3 = {}
             tmp3[5] = stack:to_string()
             recycler.recipe_cache[itemname] = {
@@ -305,7 +332,7 @@ local do_recycle              = function(pos)
         return false
     end
 
-    local recipe, recipeOutput, idealOutputCount = get_first_normal_recipe(stack)
+    local recipe, recipeOutput, idealOutputCount = get_first_normal_recipe(pos, stack)
 
     if idealOutputCount < 1 then
         return false
@@ -642,7 +669,7 @@ elseif minetest.get_modpath("mcl_util") then
             return false
         end
 
-        local _, recipeOutput, _ = get_first_normal_recipe(hopperStack)
+        local _, recipeOutput, _ = get_first_normal_recipe(to_pos, hopperStack)
         local idealRecipeStack   = ItemStack(recipeOutput)
 
         local sucked             = false
