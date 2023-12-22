@@ -18,3 +18,8 @@ k_recyclebin.destroy_mode_enable (Allow Destroy Mode for unrecyclables) bool fal
 # Basically, the higher the number the more chaotic the output when the ingredients are an `Any` type
 # Because of the way lua tables work, there's no guarantee of which item is discovered at runtime.
 k_recyclebin.group_item_mapping_sample_size (Group To Item Mapping Sample Size) int 1 1 256
+
+# If enabled, items that recycle to themselves will be treated as non recyclable and just pass through.
+# It's an edge case but happens in minecraft clones with armor trims.
+# Ignores freebie generation rules.
+k_recyclebin.self_replicating_items_enable (Allow items that recycle to themselves) bool false
