@@ -5,6 +5,37 @@ local S = minetest.get_translator(minetest.get_current_modname())
 local F = minetest.formspec_escape
 local C = minetest.colorize
 
+-- Function to split a string by a delimiter and return a table
+local function split_string(str, delimiter)
+    local result = {}
+    for match in string.gmatch(str, "([^"..delimiter.."]+)") do
+        table.insert(result, match)
+    end
+    return result
+end
+
+local banned_items = minetest.settings:get("k_recyclebin.banned_items") or "mcl_armor:sentry,mcl_armor:dune,mcl_armor:coast,mcl_armor:wild,mcl_armor:tide,mcl_armor:ward,mcl_armor:vex,rib,mcl_armor:snout,mcl_armor:eye,mcl_armor:spire,mcl_armor:silence,mcl_armor:wayfinder"
+local banned_items_array = split_string(banned_items, ",")
+minetest.log("action", string.format("Recylebin: banned items are %s.", banned_items))
+
+-- Function to extract item name from a stack string
+local function extract_item_name(stack_string)
+    -- Matches only the modname:itemname part before any additional data
+    local item_name = string.match(stack_string, "([^%s]+)")
+    return item_name
+end
+
+-- Function to check if an item is banned
+local function is_item_banned(stack_string, banned_items)
+    local item_name = extract_item_name(stack_string)
+    for _, banned_item in ipairs(banned_items) do
+        if item_name == banned_item then
+            return true
+        end
+    end
+    return false
+end
+
 local recycler = {
     container_input = "input",
     container_output = "output",
@@ -203,14 +234,16 @@ local get_first_normal_recipe = function(stack)
                 end
             end
         end
-
-        -- fallback, passtrough if no recipes found.
-        if not found then
+        -- fallback, passtrough if no recipes found or is a banned item.
+        if not found or is_item_banned(item_stack_string, banned_items_array) then
+            local item_stack_string = stack:to_string()
+            
+            -- Process for banned items
             local tmp3 = {}
-            tmp3[5] = stack:to_string()
+            tmp3[5] = item_stack_string
             recycler.recipe_cache[itemname] = {
                 recipe = tmp3,
-                output = stack:to_string(),
+                output = item_stack_string,
                 inputStackCount = 1, -- should always be single stack
             }
         end

@@ -15,3 +15,5 @@ k_recyclebin.recycle_cursed (Recycle Cursed Items [mineclonia mostly]) bool fals
 # Basically, the higher the number the more chaotic the output when the ingredients are an `Any` type
 # Because of the way lua tables work, there's no guarantee of which item is discovered at runtime.
 k_recyclebin.group_item_mapping_sample_size (Group To Item Mapping Sample Size) int 1 1 256
+
+k_recyclebin.banned_items (Banned Items) string mcl_armor:sentry,mcl_armor:dune,mcl_armor:coast,mcl_armor:wild,mcl_armor:tide,mcl_armor:ward,mcl_armor:vex,rib,mcl_armor:snout,mcl_armor:eye,mcl_armor:spire,mcl_armor:silence,mcl_armor:wayfinder
