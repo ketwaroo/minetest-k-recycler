@@ -51,7 +51,7 @@ minetest.register_on_mods_loaded(function()
     end
 end)
 
-local get_recycler_formspec   = function(pos)
+local get_recycler_formspec       = function(pos)
     local formspecString
 
     local meta = minetest.get_meta(pos)
@@ -59,7 +59,7 @@ local get_recycler_formspec   = function(pos)
     local hopperMode = "false"
     local destroyMode = "false"
     -- global flag for destroy mode.
-    local destroyModeEnabled = minetest.settings:get_bool("k_recyclebin.destroy_mode_enable")
+    local destroyModeEnabled = minetest.settings:get_bool("k_recyclebin.destroy_mode_enable", false)
 
     if 1 == meta:get_int("hopper_mode") then
         hopperMode = "true"
@@ -147,7 +147,10 @@ local get_recycler_formspec   = function(pos)
 end
 
 -- test if an inventory list is empty
-local inv_is_empty            = function(inv, listname)
+-- @param InvRef inv
+-- @param string listname
+-- @return bool
+local inv_is_empty                = function(inv, listname)
     local size = inv:get_size(listname)
     for i = 1, size, 1 do
         local stack = inv:get_stack(listname, i)
@@ -160,7 +163,7 @@ local inv_is_empty            = function(inv, listname)
 end
 
 -- clear target inventory list at position
-local inv_clear               = function(pos, listname)
+local inv_clear                   = function(pos, listname)
     local inv = minetest.get_meta(pos):get_inventory()
     local list = inv:get_list(listname)
     if not list then
@@ -173,7 +176,9 @@ local inv_clear               = function(pos, listname)
 end
 
 -- eject a stack of items at a position
-local pop_excess              = function(pos, stack)
+-- @param vector pos World coordinates.
+-- @param ItemStack stack
+local pop_excess                  = function(pos, stack)
     if stack then
         stack = ItemStack(stack) -- Ensure it is an ItemStack
         if not stack:is_empty() then
@@ -182,7 +187,9 @@ local pop_excess              = function(pos, stack)
     end
 end
 
-local get_item_from_group     = function(groupString)
+-- @param string groupString
+-- @return string An itemname if found or empty
+local get_item_from_group         = function(groupString)
     if recycler.group_lookup[groupString] then
         local randkey = math.random(#recycler.group_lookup[groupString])
         return recycler.group_lookup[groupString][randkey]
@@ -190,8 +197,23 @@ local get_item_from_group     = function(groupString)
     return ""
 end
 
+-- check if recipe output contains input.
+-- @param string itemname
+-- @param list recipe linear list of recipe components from minetest.get_all_craft_recipes()
+-- @return bool
+local is_self_replicatinge_recipe = function(itemname, recipe)
+    for _, itm in pairs(recipe) do
+        if ItemStack(itm):get_name() == itemname then
+            return true
+        end
+    end
+    return false
+end
+
 -- @todo is this even useful?
-local get_destroy_mode_recipe = function(stack)
+-- @param ItemStack stack
+-- @return ItemStack altered stack.
+local get_destroy_mode_recipe     = function(stack)
     local itemname = stack:get_name()
     -- @todo craft items don't get destroyed?
     -- if mintest.registered_craftitems[itemname] then
@@ -209,15 +231,20 @@ local get_destroy_mode_recipe = function(stack)
     return stack
 end
 
-local get_first_normal_recipe = function(pos, stack)
+-- Find any one crafting recipe for item loaded in recyclebin input at pos
+-- @param vector pos World coords
+-- @param ItemStack stack
+-- @return table {recipe={},output="item:name",inputStackCount=1..9}
+local get_first_normal_recipe     = function(pos, stack)
     local itemname = stack:get_name()
 
     local meta = minetest.get_meta(pos)
     local destroyMode = (1 == meta:get_int("destroy_mode"))
+    local allowSelfReplicatingItems = minetest.settings:get_bool("k_recyclebin.self_replicating_items_enable", false)
 
     -- to recycle enchanted items and cursed.
     if minetest.get_modpath("mcl_grindstone") then
-        if minetest.settings:get_bool("k_recyclebin.recycle_cursed") then
+        if minetest.settings:get_bool("k_recyclebin.recycle_cursed", false) then
             itemname = mcl_grindstone.remove_enchant_name(stack)
         else
             local newstack = mcl_grindstone.disenchant(stack)
@@ -237,6 +264,16 @@ local get_first_normal_recipe = function(pos, stack)
         if recipes ~= nil then
             for _, tmp in pairs(recipes) do
                 if tmp.method == "normal" and tmp.items then
+                    -- check if it is a self replicating item
+                    if
+                        not allowSelfReplicatingItems
+                        and is_self_replicatinge_recipe(itemname, tmp.items)
+                    then
+                        -- @todo bubble this error to player. maybe.
+                        minetest.log("info", "Attempt to recycle self replicating item " .. itemname)
+                        break
+                    end
+
                     recycler.recipe_cache[itemname] = {
                         recipe = {},
                         output = tmp.output,
@@ -300,7 +337,7 @@ local get_first_normal_recipe = function(pos, stack)
     return randomOutput, recipe.output, recipe.inputStackCount
 end
 
-local populate_output_grid    = function(pos, recipe, multiplier)
+local populate_output_grid        = function(pos, recipe, multiplier)
     local inv = minetest.get_meta(pos):get_inventory()
     for outindex, itx in pairs(recipe) do
         if itx ~= "" then
@@ -312,14 +349,14 @@ local populate_output_grid    = function(pos, recipe, multiplier)
     end
 end
 
-local hopper_mode_timer_start = function(pos)
+local hopper_mode_timer_start     = function(pos)
     local timer = minetest.get_node_timer(pos)
     if not timer:is_started() then
         timer:start(recycler.hopper_mode_timeout)
     end
 end
 
-local hopper_mode_timer_stop  = function(pos)
+local hopper_mode_timer_stop      = function(pos)
     local timer = minetest.get_node_timer(pos)
     if timer:is_started() then
         timer:stop()
@@ -329,7 +366,7 @@ end
 -- attempt recycling
 -- @param pos vector
 -- @returns boolean
-local do_recycle              = function(pos)
+local do_recycle                  = function(pos)
     -- reread at each run in case you use the /set command.
     local leftoverFreebiesChance = math.min(1.0, math.max(0.0, (tonumber(minetest.settings:get("k_recyclebin.leftover_freebies_chance") or 0.05))))
     local minPartialRecycleRatio = math.min(1.0, math.max(0.0, (tonumber(minetest.settings:get("k_recyclebin.partial_recycling_minimum_ratio") or 0.5))))
@@ -456,7 +493,7 @@ local do_recycle              = function(pos)
 end
 
 --- define recycler node common.
-local thedef                  = {
+local thedef                      = {
     description = S("Actual Recycle Bin"),
     tiles = {
         "k_recycler_top.png",
