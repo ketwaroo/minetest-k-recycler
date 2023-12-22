@@ -234,9 +234,9 @@ local get_first_normal_recipe = function(stack)
                 end
             end
         end
+        local item_stack_string = stack:to_string()
         -- fallback, passtrough if no recipes found or is a banned item.
         if not found or is_item_banned(item_stack_string, banned_items_array) then
-            local item_stack_string = stack:to_string()
             
             -- Process for banned items
             local tmp3 = {}
