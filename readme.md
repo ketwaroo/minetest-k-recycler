@@ -57,8 +57,7 @@ When using `mineclonia`, the recyclebin will automatically detect if connected t
 The `hopper` mod simulates a player moving the items one at a time and I haven't found a reliable way to determine if it's a player doing the item adding or if it's the hopper in order to wait for a minimum stack. And rather than replicating the logic from the ABM definition to figure out which hopper is connected to what, I just added the manual check. `mineclonia`'s hopper API is more manual and allows for more ~~hacky workarounds~~ finetuning and control.
 
 
-
-## Limitations, todos, and known bugs
+## Limitations, todos, and other edgecases
 
 ### As usual, no warranty, liability for loss of etc.
 
@@ -91,4 +90,13 @@ There are occasionally items that can't be crafted and therfore recycled but you
 "Destroy Mode" is an attempt at trying to recover something out of those items. However, currently it just destroys those items to lumps of coal, which turns the recycle bin into an incinerator basically.
 
 Use `k_recyclebin.destroy_mode_enable` setting to enable it.
+
+
+### Self replicating items and and infinite diamonds edge case.
+
+Credits to `JamesClarke7283` via github.
+
+> There is an issue where if you put armor trims in mineclone2, in the recycler. it allows you to get infinite diamonds as it returns the trim back to you, plus some diamonds. which can be used as a dupe bug.
+
+Added a check to passthrough items that would otherwise create copies of themselves via recycling + extra items. Added `k_recyclebin.self_replicating_items_enable` to control this. Default is false so armor trims will no longer create free diamonds.
 
