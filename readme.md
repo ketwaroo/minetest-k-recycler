@@ -56,6 +56,8 @@ When using `mineclonia`, the recyclebin will automatically detect if connected t
 
 The `hopper` mod simulates a player moving the items one at a time and I haven't found a reliable way to determine if it's a player doing the item adding or if it's the hopper in order to wait for a minimum stack. And rather than replicating the logic from the ABM definition to figure out which hopper is connected to what, I just added the manual check. `mineclonia`'s hopper API is more manual and allows for more ~~hacky workarounds~~ finetuning and control.
 
+
+
 ## Limitations, todos, and known bugs
 
 ### As usual, no warranty, liability for loss of etc.
@@ -82,6 +84,11 @@ For example, assume the following recipe exists `group:coal` + `group:stick` = `
 
 Recycling a torch crafted form coal and stick may yield any combination of `(coal,charcoal)+(stick,bamboo)` depending on what was cached/found at run time. 
 
-### TODO - Needs an off switch (mineclonia only)
+### Destroy Mode (WIP; disabled by default)
 
-When connected to hoppers, items sucked in are immediately processed and moved along. Might be good idea to have it pausable via redstone or switches.
+There are occasionally items that can't be crafted and therfore recycled but you still don't want to keep them around. Or they may be leftovers from another mod you disabled and they show up as unknown blocks or items in your inventory. Or jsut stuff you really don't care to keep around.
+
+"Destroy Mode" is an attempt at trying to recover something out of those items. However, currently it just destroys those items to lumps of coal, which turns the recycle bin into an incerator basically.
+
+Use `k_recyclebin.destroy_mode_enable` setting to enable it.
+

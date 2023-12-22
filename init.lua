@@ -46,7 +46,7 @@ minetest.register_on_mods_loaded(function()
     -- @todo for destroy mode, need more dynamic way of determining default trash.
     if minetest.get_modpath("default") then
         recycler.default_trash = "default:coal_lump"
-    elseif minetest.get_modpath("core") then
+    elseif minetest.get_modpath("mcl_core") then
         recycler.default_trash = "mcl_core:coal_lump"
     end
 end)
@@ -58,12 +58,14 @@ local get_recycler_formspec   = function(pos)
 
     local hopperMode = "false"
     local destroyMode = "false"
+    -- global flag for destroy mode.
+    local destroyModeEnabled = minetest.settings:get_bool("k_recyclebin.destroy_mode_enable")
 
     if 1 == meta:get_int("hopper_mode") then
         hopperMode = "true"
     end
 
-    if 1 == meta:get_int("destroy_mode") then
+    if destroyModeEnabled and 1 == meta:get_int("destroy_mode") then
         destroyMode = "true"
     end
 
@@ -95,13 +97,18 @@ local get_recycler_formspec   = function(pos)
         "label[0.25,3.5;" .. F(S("Inventory")) .. "]",
         "list[current_player;main;0.5," .. invBarY .. ";" .. invWidth .. ",1;]",
         "list[current_player;main;0.5," .. invGridY .. ";" .. invWidth .. ",3;" .. invWidth .. "]",
-        -- destroyMode
-        "checkbox[" .. (inOutPadding + 5.25) .. ",1.0;destroy_mode;" .. F(S("Destroy Mode")) .. ";" .. destroyMode .. "]",
-        "tooltip[destroy_mode;" .. F(S(
-            "Destroy Mode will attempt to break down unrecyclable items.\n" ..
-            "May destroy things.. as the name suggests."
-        )) .. "]"
     })
+
+    if destroyModeEnabled then
+        formspecString = formspecString .. table.concat({
+            -- destroyMode checkbox
+            "checkbox[" .. (inOutPadding + 5.25) .. ",1.0;destroy_mode;" .. F(S("Destroy Mode")) .. ";" .. destroyMode .. "]",
+            "tooltip[destroy_mode;" .. F(S(
+                "Destroy Mode will attempt to break down unrecyclable items.\n" ..
+                "May destroy things.. as the name suggests."
+            )) .. "]"
+        })
+    end
 
     -- why backgounds tho
     if minetest.get_modpath("mcl_formspec") then
@@ -183,15 +190,21 @@ local get_item_from_group     = function(groupString)
     return ""
 end
 
--- @todo is this useful?
+-- @todo is this even useful?
 local get_destroy_mode_recipe = function(stack)
     local itemname = stack:get_name()
-    -- craft items don't get destroyed.
-    if mintest.registered_craftitems[itemname] then
-        return stack
-    end
-    if (recycler.default_trash) then
-        stack:set_name(recycler.default_trash)
+    -- @todo craft items don't get destroyed?
+    -- if mintest.registered_craftitems[itemname] then
+    --     return stack
+    -- end
+
+    -- @todo needs alt ways of getting items
+    -- perhaps via repair ingredients of other types of recipes.
+
+    if nil ~= recycler.default_trash then
+        local trashStack = ItemStack(recycler.default_trash)
+        trashStack:set_count(stack:get_count())
+        return trashStack
     end
     return stack
 end
@@ -216,10 +229,10 @@ local get_first_normal_recipe = function(pos, stack)
 
     local recipe = nil
 
-    -- find and cache
+    -- find and cache only existing recipes
+    -- passthrough/destroy mode not cached.
     if not recycler.recipe_cache[itemname] then
         local recipes = minetest.get_all_craft_recipes(itemname)
-        local found = false
         -- print(dump(recipes))
         if recipes ~= nil then
             for _, tmp in pairs(recipes) do
@@ -249,33 +262,33 @@ local get_first_normal_recipe = function(pos, stack)
                                 .inputStackCount + 1
                         end
                     end
-
-                    found = true
                     break
                 end
             end
         end
-
-        -- fallback, passtrough if no recipes found.
-        if not found then
-            if destroyMode then
-                stack = get_destroy_mode_recipe(stack)
-            end
-
-            local tmp3 = {}
-            tmp3[5] = stack:to_string()
-            recycler.recipe_cache[itemname] = {
-                recipe = tmp3,
-                output = stack:to_string(),
-                inputStackCount = 1, -- should always be single stack
-            }
-        end
     end
 
-    recipe = recycler.recipe_cache[itemname]
+    -- use cached if exists.
+    if nil ~= recycler.recipe_cache[itemname] then
+        recipe = recycler.recipe_cache[itemname]
+    else
+        -- passthrough/destroymode
+        local tmp = {}
+
+        if destroyMode then
+            stack = get_destroy_mode_recipe(stack)
+        end
+
+        -- smack in the middle
+        tmp[5] = stack:to_string()
+        recipe = {
+            recipe = tmp,
+            output = stack:to_string(),
+            inputStackCount = 1, -- should always be single stack
+        }
+    end
 
     local randomOutput = {}
-
     -- shuffle group items somewhat
     for k, itm in pairs(recipe.recipe) do
         if string.find(itm, "group:") then

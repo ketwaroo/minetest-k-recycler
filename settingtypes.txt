@@ -11,6 +11,9 @@ k_recyclebin.partial_recycling_minimum_ratio (Partial Recycling Minimum stack Ra
 # Recyclebin will break down regular enchanted items but not cursed items by default.
 k_recyclebin.recycle_cursed (Recycle Cursed Items [mineclonia mostly]) bool false
 
+# Recyclebin will not be able to breakdown items with no recipes. This turns it into an incinerator basically.
+k_recyclebin.destroy_mode_enable (Allow Destroy Mode for unrecyclables) bool false
+
 # Controls how many item names are cached for a `group:groupname` -> `actual_item_name` translation table.
 # Basically, the higher the number the more chaotic the output when the ingredients are an `Any` type
 # Because of the way lua tables work, there's no guarantee of which item is discovered at runtime.
