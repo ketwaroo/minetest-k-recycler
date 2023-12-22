@@ -86,9 +86,9 @@ Recycling a torch crafted form coal and stick may yield any combination of `(coa
 
 ### Destroy Mode (WIP; disabled by default)
 
-There are occasionally items that can't be crafted and therfore recycled but you still don't want to keep them around. Or they may be leftovers from another mod you disabled and they show up as unknown blocks or items in your inventory. Or jsut stuff you really don't care to keep around.
+There are occasionally items that can't be crafted and therfore recycled but you still don't want to keep them around. Or they may be leftovers from another mod you disabled and they show up as unknown blocks or items in your inventory. Or just stuff you really don't care to keep around.
 
-"Destroy Mode" is an attempt at trying to recover something out of those items. However, currently it just destroys those items to lumps of coal, which turns the recycle bin into an incerator basically.
+"Destroy Mode" is an attempt at trying to recover something out of those items. However, currently it just destroys those items to lumps of coal, which turns the recycle bin into an incinerator basically.
 
 Use `k_recyclebin.destroy_mode_enable` setting to enable it.
 
