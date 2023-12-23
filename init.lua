@@ -373,14 +373,18 @@ local do_recycle                  = function(pos)
     local meta = minetest.get_meta(pos)
     local inv = meta:get_inventory()
     local stack = inv:get_stack(recycler.container_input, 1)
-    if
-        inv_is_empty(inv, recycler.container_input)
-        or not inv_is_empty(inv, recycler.container_output)
-    then
-        -- might  be emptying output
-        --print("do_recycle skip")
-        return false
-    end
+    -- print(dump(stack:to_string()))
+
+    -- this check already done by item put/take events.
+    -- allows dropping items on recycler input one by one.
+    -- if
+    --     inv_is_empty(inv, recycler.container_input)
+    --     or not inv_is_empty(inv, recycler.container_output)
+    -- then
+    --     -- might  be emptying output
+    --     --print("do_recycle skip")
+    --     return false
+    -- end
 
     local recipe, recipeOutput, idealOutputCount = get_first_normal_recipe(pos, stack)
 
@@ -455,7 +459,12 @@ local do_recycle                  = function(pos)
 
     -- jitter somewhat to reduce item duplication
     -- should have at least half required stack, if not do a passthrough
-    if minPartialRecycleRatio > (remainderItemsStackSize / idealInputCount) then
+    if
+    -- Account for recipes where output == 1. so that 9 diamonds always required gives 1 block
+    -- may be other edge cases where input:output ration is high, but good enough for now.
+        idealOutputCount == 1
+        or minPartialRecycleRatio > (remainderItemsStackSize / idealInputCount)
+    then
         -- some leftovers may be discarded.
         local leftoverStack = ItemStack(recipeOutput)
         leftoverStack:set_count(remainderItemsStackSize)

@@ -36,6 +36,8 @@ For example in `minetest` game, 6 wood blocks -> 8 wood stairs. To get back exac
 
 The `k_recyclebin.partial_recycling_minimum_ratio` setting contols partial recycling somewhat. By default, it has a value of `0.5`, which means you need at leart half a full input stack to allow partial recycling. So if you supply 2 torches you will end up with either 1 coal or 1 stick. But recycling only 1 torch will most likely pass through unchanged.
 
+One exception to that rule are for recipes where single block generates N items of the same type. For example 1 diamond block -> 9 diamonds. If you were to recycle 5 diamonds, it would always be above the 0.5 default min ratio and produce a diamond block, and feed that diamond block back in the recycler -> 9 diamonds, take 5 -> 1 block, .. and so on for unlimited diamonds. To avoid that exploit, if N items recycles to single item, all N items are required. Other edge cases may exists but I not testing all the recipes.
+
 ### Freebies
 
 Another "feature" of this recyling bin is allowing freebies when recycling partial stacks.  There's some none zero change (default is less than 5%) you'll get a full item if close enough to original stack. So a stack of 3 torches can give you a full 1 coal + 1 stick.
