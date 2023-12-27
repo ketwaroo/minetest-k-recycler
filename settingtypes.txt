@@ -23,3 +23,7 @@ k_recyclebin.group_item_mapping_sample_size (Group To Item Mapping Sample Size) 
 # It's an edge case but happens in minecraft clones with armor trims.
 # Ignores freebie generation rules.
 k_recyclebin.self_replicating_items_enable (Allow items that recycle to themselves) bool false
+
+# Preset protected items list. Comma separated list of item ids. `mod_name:item` format
+# These items will never be reycled and always pass through.
+k_recyclebin.protected_items (Protected/Banned Items) string

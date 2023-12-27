@@ -4,13 +4,14 @@
 local S = minetest.get_translator(minetest.get_current_modname())
 local F = minetest.formspec_escape
 
-local recycler = {
+local k_recyclebin = {
     container_input = "input",
     container_output = "output",
     group_lookup = {},
     recipe_cache = {},
     hopper_mode_timeout = 3, -- wait in seconds. should be bigger than rate hopper is pushing items by default. might be a race condition waiting to happen.
     default_trash = nil,
+    protected_items = {},
 }
 
 minetest.register_on_mods_loaded(function()
@@ -30,27 +31,53 @@ minetest.register_on_mods_loaded(function()
                 for groupname, _ in pairs(def.groups) do
                     -- prepend group: for quicker lookup
                     local gn = "group:" .. groupname
-                    if not recycler.group_lookup[gn] then
-                        recycler.group_lookup[gn] = {}
+                    if not k_recyclebin.group_lookup[gn] then
+                        k_recyclebin.group_lookup[gn] = {}
                     end
                     -- keep track of a few
-                    if #recycler.group_lookup[gn] < groupSampleSize then
-                        table.insert(recycler.group_lookup[gn], def.name)
+                    if #k_recyclebin.group_lookup[gn] < groupSampleSize then
+                        table.insert(k_recyclebin.group_lookup[gn], def.name)
                     end
                 end
             end
         end
     end
-    -- print(dump(recycler.group_lookup))
 
     -- @todo for destroy mode, need more dynamic way of determining default trash.
     if minetest.get_modpath("default") then
-        recycler.default_trash = "default:coal_lump"
+        k_recyclebin.default_trash = "default:coal_lump"
     elseif minetest.get_modpath("mcl_core") then
-        recycler.default_trash = "mcl_core:coal_lump"
+        k_recyclebin.default_trash = "mcl_core:coal_lump"
+    end
+
+    -- load initial protected items
+    local initalProtected = string.split(minetest.settings:get("k_recyclebin.protected_items") or "", ",")
+
+    table.insert(initalProtected, "default:coal_lump")
+
+    for _, pr in ipairs(initalProtected) do
+        pr = ("" .. pr):trim()
+        -- @todo what about aliases? ignoring for now. I'm not doing the extra lookups.
+        k_recyclebin.add_protected_item(pr)
     end
 end)
 
+-- public function to add protected items
+-- @param string itemname
+k_recyclebin.add_protected_item   = function(itemname)
+    if nil == k_recyclebin.protected_items[itemname] then
+        k_recyclebin.protected_items[itemname] = true
+    end
+end
+
+-- @param string itemname
+-- @return bool
+k_recyclebin.is_protected_item    = function(itemname)
+    return true == k_recyclebin.protected_items[itemname]
+end
+
+-- @param vector pos Position of recyclebin
+-- @return string forspec
 local get_recycler_formspec       = function(pos)
     local formspecString
 
@@ -91,9 +118,9 @@ local get_recycler_formspec       = function(pos)
     formspecString = table.concat({
         "size[" .. (invWidth + 1) .. ",8.5]",
         "label[0.25,0;" .. F(S("Recycling")) .. "]",
-        "list[context;" .. recycler.container_input .. ";" .. inOutPadding .. ",1.5;1,1;]",
+        "list[context;" .. k_recyclebin.container_input .. ";" .. inOutPadding .. ",1.5;1,1;]",
         "image[" .. (inOutPadding + 1) .. ",1.5;1,1;" .. arrowImg .. "]",
-        "list[context;" .. recycler.container_output .. ";" .. (inOutPadding + 2) .. ",0.5;3,3;]",
+        "list[context;" .. k_recyclebin.container_output .. ";" .. (inOutPadding + 2) .. ",0.5;3,3;]",
         "label[0.25,3.5;" .. F(S("Inventory")) .. "]",
         "list[current_player;main;0.5," .. invBarY .. ";" .. invWidth .. ",1;]",
         "list[current_player;main;0.5," .. invGridY .. ";" .. invWidth .. ",3;" .. invWidth .. "]",
@@ -138,9 +165,9 @@ local get_recycler_formspec       = function(pos)
     -- items should move from main to input, input to main, output to main on shift click
     formspecString = formspecString ..
         "listring[current_player;main]" ..
-        "listring[context;" .. recycler.container_input .. "]" ..
+        "listring[context;" .. k_recyclebin.container_input .. "]" ..
         "listring[current_player;main]" ..
-        "listring[context;" .. recycler.container_output .. "]" ..
+        "listring[context;" .. k_recyclebin.container_output .. "]" ..
         "listring[current_player;main]"
 
     return formspecString
@@ -190,9 +217,9 @@ end
 -- @param string groupString
 -- @return string An itemname if found or empty
 local get_item_from_group         = function(groupString)
-    if recycler.group_lookup[groupString] then
-        local randkey = math.random(#recycler.group_lookup[groupString])
-        return recycler.group_lookup[groupString][randkey]
+    if k_recyclebin.group_lookup[groupString] then
+        local randkey = math.random(#k_recyclebin.group_lookup[groupString])
+        return k_recyclebin.group_lookup[groupString][randkey]
     end
     return ""
 end
@@ -223,8 +250,8 @@ local get_destroy_mode_recipe     = function(stack)
     -- @todo needs alt ways of getting items
     -- perhaps via repair ingredients of other types of recipes.
 
-    if nil ~= recycler.default_trash then
-        local trashStack = ItemStack(recycler.default_trash)
+    if nil ~= k_recyclebin.default_trash then
+        local trashStack = ItemStack(k_recyclebin.default_trash)
         trashStack:set_count(stack:get_count())
         return trashStack
     end
@@ -234,13 +261,16 @@ end
 -- Find any one crafting recipe for item loaded in recyclebin input at pos
 -- @param vector pos World coords
 -- @param ItemStack stack
+-- @param ObjectRef actor or nil
 -- @return table {recipe={},output="item:name",inputStackCount=1..9}
-local get_first_normal_recipe     = function(pos, stack)
+local get_first_normal_recipe     = function(pos, stack, actor)
     local itemname = stack:get_name()
 
     local meta = minetest.get_meta(pos)
     local destroyMode = (1 == meta:get_int("destroy_mode"))
     local allowSelfReplicatingItems = minetest.settings:get_bool("k_recyclebin.self_replicating_items_enable", false)
+
+    local playerName = actor and actor:get_player_name() or "unknown"
 
     -- to recycle enchanted items and cursed.
     if minetest.get_modpath("mcl_grindstone") then
@@ -256,9 +286,19 @@ local get_first_normal_recipe     = function(pos, stack)
 
     local recipe = nil
 
+    local isProtected = k_recyclebin.is_protected_item(itemname)
+    if isProtected then
+        -- @todo needs a more violent notification.
+        minetest.log("warning", "Attempt by " .. playerName .. " to recycle protected item '" .. itemname .. "'")
+    end
+
     -- find and cache only existing recipes
     -- passthrough/destroy mode not cached.
-    if not recycler.recipe_cache[itemname] then
+    if
+    -- skip protected.
+        not isProtected
+        and not k_recyclebin.recipe_cache[itemname]
+    then
         local recipes = minetest.get_all_craft_recipes(itemname)
         -- print(dump(recipes))
         if recipes ~= nil then
@@ -274,7 +314,7 @@ local get_first_normal_recipe     = function(pos, stack)
                         break
                     end
 
-                    recycler.recipe_cache[itemname] = {
+                    k_recyclebin.recipe_cache[itemname] = {
                         recipe = {},
                         output = tmp.output,
                         inputStackCount = 0,
@@ -282,20 +322,20 @@ local get_first_normal_recipe     = function(pos, stack)
 
                     -- full grid or formless already fit
                     if tmp.width == 3 or tmp.width == 0 then
-                        recycler.recipe_cache[itemname].recipe = table.copy(tmp.items)
+                        k_recyclebin.recipe_cache[itemname].recipe = table.copy(tmp.items)
                     else
                         -- shift index to fit a 3x3 grid
                         for k, itm in pairs(tmp.items) do
                             local colNum = math.floor((k - 1) / tmp.width)
                             local newK = k + (colNum * (3 - tmp.width))
-                            recycler.recipe_cache[itemname].recipe[newK] = itm
+                            k_recyclebin.recipe_cache[itemname].recipe[newK] = itm
                         end
                     end
 
                     -- non empty stack count in recipe.
-                    for _, val in pairs(recycler.recipe_cache[itemname].recipe) do
+                    for _, val in pairs(k_recyclebin.recipe_cache[itemname].recipe) do
                         if val ~= "" then
-                            recycler.recipe_cache[itemname].inputStackCount = recycler.recipe_cache[itemname]
+                            k_recyclebin.recipe_cache[itemname].inputStackCount = k_recyclebin.recipe_cache[itemname]
                                 .inputStackCount + 1
                         end
                     end
@@ -306,13 +346,16 @@ local get_first_normal_recipe     = function(pos, stack)
     end
 
     -- use cached if exists.
-    if nil ~= recycler.recipe_cache[itemname] then
-        recipe = recycler.recipe_cache[itemname]
+    if nil ~= k_recyclebin.recipe_cache[itemname] then
+        recipe = k_recyclebin.recipe_cache[itemname]
     else
         -- passthrough/destroymode
         local tmp = {}
 
-        if destroyMode then
+        if
+            destroyMode
+            and not isProtected
+        then
             stack = get_destroy_mode_recipe(stack)
         end
 
@@ -344,7 +387,7 @@ local populate_output_grid        = function(pos, recipe, multiplier)
             local outstack = ItemStack(itx)
             -- quanity may get truncated if bigger than allowed stack size.
             outstack:set_count(outstack:get_count() * multiplier)
-            inv:set_stack(recycler.container_output, outindex, outstack)
+            inv:set_stack(k_recyclebin.container_output, outindex, outstack)
         end
     end
 end
@@ -352,7 +395,7 @@ end
 local hopper_mode_timer_start     = function(pos)
     local timer = minetest.get_node_timer(pos)
     if not timer:is_started() then
-        timer:start(recycler.hopper_mode_timeout)
+        timer:start(k_recyclebin.hopper_mode_timeout)
     end
 end
 
@@ -366,27 +409,16 @@ end
 -- attempt recycling
 -- @param pos vector
 -- @returns boolean
-local do_recycle                  = function(pos)
+local do_recycle                  = function(pos, actor)
     -- reread at each run in case you use the /set command.
     local leftoverFreebiesChance = math.min(1.0, math.max(0.0, (tonumber(minetest.settings:get("k_recyclebin.leftover_freebies_chance") or 0.05))))
     local minPartialRecycleRatio = math.min(1.0, math.max(0.0, (tonumber(minetest.settings:get("k_recyclebin.partial_recycling_minimum_ratio") or 0.5))))
     local meta = minetest.get_meta(pos)
     local inv = meta:get_inventory()
-    local stack = inv:get_stack(recycler.container_input, 1)
+    local stack = inv:get_stack(k_recyclebin.container_input, 1)
     -- print(dump(stack:to_string()))
 
-    -- this check already done by item put/take events.
-    -- allows dropping items on recycler input one by one.
-    -- if
-    --     inv_is_empty(inv, recycler.container_input)
-    --     or not inv_is_empty(inv, recycler.container_output)
-    -- then
-    --     -- might  be emptying output
-    --     --print("do_recycle skip")
-    --     return false
-    -- end
-
-    local recipe, recipeOutput, idealOutputCount = get_first_normal_recipe(pos, stack)
+    local recipe, recipeOutput, idealOutputCount = get_first_normal_recipe(pos, stack, actor)
 
     if idealOutputCount < 1 then
         return false
@@ -446,7 +478,7 @@ local do_recycle                  = function(pos)
     end
 
     -- refresh
-    inv_clear(pos, recycler.container_output)
+    inv_clear(pos, k_recyclebin.container_output)
 
     -- set full recipes
     if fullLoops > 0 then
@@ -469,7 +501,7 @@ local do_recycle                  = function(pos)
         local leftoverStack = ItemStack(recipeOutput)
         leftoverStack:set_count(remainderItemsStackSize)
         -- pop the rest
-        pop_excess(pos, inv:add_item(recycler.container_output, leftoverStack))
+        pop_excess(pos, inv:add_item(k_recyclebin.container_output, leftoverStack))
     else
         -- randomize remainders
         local recipeKeys = {}
@@ -484,14 +516,14 @@ local do_recycle                  = function(pos)
         for _, outindex in pairs(recipeKeys) do
             if remainderLoops > 0 then
                 local itx = recipe[outindex]
-                local outstack = inv:get_stack(recycler.container_output, outindex)
+                local outstack = inv:get_stack(k_recyclebin.container_output, outindex)
 
                 if outstack:item_fits(itx) then
                     -- leftovers may get lost.
                     outstack:add_item(itx)
                 end
 
-                inv:set_stack(recycler.container_output, outindex, outstack)
+                inv:set_stack(k_recyclebin.container_output, outindex, outstack)
 
                 remainderLoops = remainderLoops - 1
             end
@@ -537,8 +569,8 @@ local thedef                      = {
     on_construct = function(pos)
         local meta = minetest.get_meta(pos)
         local inv = meta:get_inventory()
-        inv:set_size(recycler.container_input, 1)
-        inv:set_size(recycler.container_output, 3 * 3)
+        inv:set_size(k_recyclebin.container_input, 1)
+        inv:set_size(k_recyclebin.container_output, 3 * 3)
 
         meta:set_int("hopper_mode", 0)
         meta:set_int("hopper_wait", 0)
@@ -572,7 +604,7 @@ local thedef                      = {
 
     after_dig_node = function(pos, oldnode, oldmetadata, digger)
         if not oldmetadata.inventory then return end
-        for _, listname in ipairs({ recycler.container_input, recycler.container_output }) do
+        for _, listname in ipairs({ k_recyclebin.container_input, k_recyclebin.container_output }) do
             if oldmetadata.inventory[listname] then
                 for _, stack in ipairs(oldmetadata.inventory[listname]) do
                     pop_excess(pos, stack)
@@ -593,15 +625,15 @@ local thedef                      = {
         local meta = minetest.get_meta(pos)
         local inv = meta:get_inventory()
 
-        if listname == recycler.container_input
+        if listname == k_recyclebin.container_input
             and inv_is_empty(inv, listname)
-            and not inv_is_empty(inv, recycler.container_output)
+            and not inv_is_empty(inv, k_recyclebin.container_output)
         then
             --print("can't put things in input if output is partially cleared." .. dump(inv_empty(inv, listname)) .. " " ..dump(inv_empty(inv, recycler.container_output)))
             return 0
         end
 
-        if listname == recycler.container_output then
+        if listname == k_recyclebin.container_output then
             --print("can't put things in output")
             return 0
         end
@@ -611,10 +643,10 @@ local thedef                      = {
 
     on_metadata_inventory_put = function(pos, listname, index, stack, player)
         --print("on_metadata_inventory_put " .. dump(stack:get_name()) .. " " .. stack:get_count())
-        if listname == recycler.container_input
+        if listname == k_recyclebin.container_input
             and not stack:is_empty()
         then
-            if do_recycle(pos) then
+            if do_recycle(pos, player) then
                 minetest.log("info", string.format("Recylebin: %s recycled %s.", player:get_player_name(), stack:to_string()))
             else
                 -- something else
@@ -629,13 +661,13 @@ local thedef                      = {
 
     on_metadata_inventory_take = function(pos, listname, index, stack, player)
         -- clear output if we remove input.
-        if listname == recycler.container_input then
-            inv_clear(pos, recycler.container_output)
+        if listname == k_recyclebin.container_input then
+            inv_clear(pos, k_recyclebin.container_output)
         end
 
         -- clear input when we take retrieve items from output.
-        if listname == recycler.container_output then
-            inv_clear(pos, recycler.container_input)
+        if listname == k_recyclebin.container_output then
+            inv_clear(pos, k_recyclebin.container_input)
         end
     end,
 
@@ -643,10 +675,10 @@ local thedef                      = {
         -- this handler might not be needed
         if
         -- can't move things to output
-            to_list == recycler.container_output
+            to_list == k_recyclebin.container_output
             -- or from output to input.
             -- need to clear output before recycling new item.
-            or (from_list == recycler.container_output and to_list == recycler.container_input)
+            or (from_list == k_recyclebin.container_output and to_list == k_recyclebin.container_input)
         then
             return 0
         end
@@ -655,7 +687,7 @@ local thedef                      = {
     end,
     on_timer = function(pos, elapsed)
         if (1 == minetest.get_meta(pos):get_int("hopper_mode")) then
-            local loops = math.ceil(elapsed / recycler.hopper_mode_timeout)
+            local loops = math.ceil(elapsed / k_recyclebin.hopper_mode_timeout)
             for i = 1, loops, 1 do
                 do_recycle(pos)
             end
@@ -666,9 +698,9 @@ local thedef                      = {
 -- facedeer/tenplusone hoppers
 if minetest.get_modpath("hopper") then
     hopper:add_container({
-        { "top",    "k_recyclebin:recyclebin", recycler.container_output },
-        { "bottom", "k_recyclebin:recyclebin", recycler.container_input },
-        { "side",   "k_recyclebin:recyclebin", recycler.container_input },
+        { "top",    "k_recyclebin:recyclebin", k_recyclebin.container_output },
+        { "bottom", "k_recyclebin:recyclebin", k_recyclebin.container_input },
+        { "side",   "k_recyclebin:recyclebin", k_recyclebin.container_input },
     })
 end
 
@@ -695,7 +727,7 @@ elseif minetest.get_modpath("mcl_util") then
         local inv = meta:get_inventory()
 
         -- skip is in process of emptying or still processing
-        if not inv_is_empty(inv, recycler.container_output) then
+        if not inv_is_empty(inv, k_recyclebin.container_output) then
             --print("_on_hopper_in skip 1")
             return false
         end
@@ -717,11 +749,11 @@ elseif minetest.get_modpath("mcl_util") then
             return false
         end
 
-        local inputStack = inv:get_stack(recycler.container_input, 1)
+        local inputStack = inv:get_stack(k_recyclebin.container_input, 1)
 
         -- skip is in process of loading items
         if
-            not inv_is_empty(inv, recycler.container_input)
+            not inv_is_empty(inv, k_recyclebin.container_input)
             and hopperStack:get_name() ~= inputStack:get_name()
         then
             --print("_on_hopper_in skip 2")
@@ -735,7 +767,7 @@ elseif minetest.get_modpath("mcl_util") then
         -- try to load at least one stack if available
         if inputStack:get_count() < idealRecipeStack:get_count() then
             for i = 1, idealRecipeStack:get_count() - inputStack:get_count(), 1 do
-                sucked = mcl_util.move_item_container(hopper_pos, to_pos, nil, nil, recycler.container_input)
+                sucked = mcl_util.move_item_container(hopper_pos, to_pos, nil, nil, k_recyclebin.container_input)
             end
         end
 
@@ -747,12 +779,12 @@ elseif minetest.get_modpath("mcl_util") then
 
     thedef._on_hopper_out = function(from_pos, hopper_pos)
         -- Suck items from the container into the hopper
-        local sucked = mcl_util.move_item_container(from_pos, hopper_pos, recycler.container_output)
+        local sucked = mcl_util.move_item_container(from_pos, hopper_pos, k_recyclebin.container_output)
 
         if sucked then
             -- clear input when we take retrieve items from output.
             -- hopper doesn't trigger on_take
-            inv_clear(from_pos, recycler.container_input)
+            inv_clear(from_pos, k_recyclebin.container_input)
         end
         return sucked
     end

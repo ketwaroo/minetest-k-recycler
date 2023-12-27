@@ -36,7 +36,7 @@ For example in `minetest` game, 6 wood blocks -> 8 wood stairs. To get back exac
 
 The `k_recyclebin.partial_recycling_minimum_ratio` setting contols partial recycling somewhat. By default, it has a value of `0.5`, which means you need at leart half a full input stack to allow partial recycling. So if you supply 2 torches you will end up with either 1 coal or 1 stick. But recycling only 1 torch will most likely pass through unchanged.
 
-One exception to that rule are for recipes where single block generates N items of the same type. For example 1 diamond block -> 9 diamonds. If you were to recycle 5 diamonds, it would always be above the 0.5 default min ratio and produce a diamond block, and feed that diamond block back in the recycler -> 9 diamonds, take 5 -> 1 block, .. and so on for unlimited diamonds. To avoid that exploit, if N items recycles to single item, all N items are required. Other edge cases may exists but I not testing all the recipes.
+One exception to that rule are for recipes where single block generates N items of the same type. For example 1 diamond block -> 9 diamonds. If you were to recycle 5 diamonds, it would always be above the 0.5 default min ratio and produce a diamond block, and feed that diamond block back in the recycler -> 9 diamonds, take 4 diamonds, feed 5 back into recycler -> 1 new diamond block, .. and so on for unlimited diamonds. To avoid that exploit, if N items recycles to single item, all N items are required. Other edge cases may exists but I'm not testing all the recipes.
 
 ### Freebies
 
@@ -57,6 +57,23 @@ Note that not all edge cases with hoppers have been discovered or even considere
 When using `mineclonia`, the recyclebin will automatically detect if connected to a hopper and enter something called `Hopper Mode`. When using the `hopper` mod, you will have to manually check the `Hopper Mode` checkbox in the recyle bin UI after connecting it to hoppers. Note that you can use `Hopper mode` without connecting to hopper but all that does is add an awkward 3 seconds delay before processing what ever stack of item you manually input.
 
 The `hopper` mod simulates a player moving the items one at a time and I haven't found a reliable way to determine if it's a player doing the item adding or if it's the hopper in order to wait for a minimum stack. And rather than replicating the logic from the ABM definition to figure out which hopper is connected to what, I just added the manual check. `mineclonia`'s hopper API is more manual and allows for more ~~hacky workarounds~~ finetuning and control.
+
+### Protected/Banned items
+
+There's a sorry excuse of an API to disallow some items from recycling. One usecase is you have a custom mod/game with a shiny item you can craft from it and don't want those dirty peasants playing it to be able to reverse it to its original ingredients.
+
+```lua
+-- add k_recyclebin as optional dependency to your mod
+minetest.register_on_mods_loaded(function()
+    if minetest.get_modpath("k_recyclebin") then
+        k_recyclebin.add_protected_item("mybestestmod:the_precious")
+    end
+end)
+```
+
+See also `k_recyclebin.protected_items` setting, which is a comma separated list of items names for an initial list of protected items.
+
+Based on a suggestion from `JamesClarke7283` via github.
 
 
 ## Limitations, todos, and other edgecases
