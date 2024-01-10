@@ -593,7 +593,6 @@ local thedef                      = {
         meta:set_string("formspec", get_recycler_formspec(pos))
     end,
 
-
     on_receive_fields = function(pos, formname, fields, sender)
         if is_protected_pos(pos, sender) then
             return
@@ -622,12 +621,25 @@ local thedef                      = {
     end,
 
     after_dig_node = function(pos, oldnode, oldmetadata, digger)
-        if not oldmetadata.inventory then return end
-        for _, listname in ipairs({ k_recyclebin.container_input, k_recyclebin.container_output }) do
-            if oldmetadata.inventory[listname] then
-                for _, stack in ipairs(oldmetadata.inventory[listname]) do
-                    pop_excess(pos, stack)
-                end
+        if not oldmetadata.inventory then
+            return
+        end
+        -- if both input and output have items then only drop input
+        local inputStack = ItemStack(
+            oldmetadata.inventory[k_recyclebin.container_input]
+            and oldmetadata.inventory[k_recyclebin.container_input][1]
+            or nil
+        )
+        local listToPop
+        if not inputStack:is_empty() then
+            listToPop = k_recyclebin.container_input
+        else
+            listToPop = k_recyclebin.container_output
+        end
+
+        if oldmetadata.inventory[listToPop] then
+            for _, stack in ipairs(oldmetadata.inventory[listToPop]) do
+                pop_excess(pos, stack)
             end
         end
     end,
@@ -641,7 +653,6 @@ local thedef                      = {
     end,
 
     allow_metadata_inventory_put = function(pos, listname, index, stack, player)
-
         if is_protected_pos(pos, player) then
             return 0
         end
