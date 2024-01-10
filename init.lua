@@ -76,6 +76,21 @@ k_recyclebin.is_protected_item    = function(itemname)
     return true == k_recyclebin.protected_items[itemname]
 end
 
+-- check if is a protected recyclebin.
+-- @param vector pos
+-- @param ObjectRef player or nil
+-- @return bool
+local is_protected_pos            = function(pos, player)
+    local name = player and player:get_player_name() or ""
+    if minetest.is_protected(pos, name) then
+        if name ~= "" then
+            minetest.record_protection_violation(pos, name)
+        end
+        return true
+    end
+    return false
+end
+
 -- @param vector pos Position of recyclebin
 -- @return string forspec
 local get_recycler_formspec       = function(pos)
@@ -580,6 +595,10 @@ local thedef                      = {
 
 
     on_receive_fields = function(pos, formname, fields, sender)
+        if is_protected_pos(pos, sender) then
+            return
+        end
+
         -- print("on_receive_fields: " .. dump(formname) .. ", " .. dump(fields))
         local meta = minetest.get_meta(pos)
         if fields.hopper_mode then
@@ -622,6 +641,11 @@ local thedef                      = {
     end,
 
     allow_metadata_inventory_put = function(pos, listname, index, stack, player)
+
+        if is_protected_pos(pos, player) then
+            return 0
+        end
+
         local meta = minetest.get_meta(pos)
         local inv = meta:get_inventory()
 
@@ -642,6 +666,10 @@ local thedef                      = {
     end,
 
     on_metadata_inventory_put = function(pos, listname, index, stack, player)
+        if is_protected_pos(pos, player) then
+            return
+        end
+
         --print("on_metadata_inventory_put " .. dump(stack:get_name()) .. " " .. stack:get_count())
         if listname == k_recyclebin.container_input
             and not stack:is_empty()
@@ -656,10 +684,16 @@ local thedef                      = {
 
     allow_metadata_inventory_take = function(pos, listname, index, stack, player)
         -- tbd.
+        if is_protected_pos(pos, player) then
+            return 0
+        end
         return stack:get_count()
     end,
 
     on_metadata_inventory_take = function(pos, listname, index, stack, player)
+        if is_protected_pos(pos, player) then
+            return
+        end
         -- clear output if we remove input.
         if listname == k_recyclebin.container_input then
             inv_clear(pos, k_recyclebin.container_output)
@@ -672,6 +706,10 @@ local thedef                      = {
     end,
 
     allow_metadata_inventory_move = function(pos, from_list, from_index, to_list, to_index, count, player)
+        if is_protected_pos(pos, player) then
+            return 0
+        end
+
         -- this handler might not be needed
         if
         -- can't move things to output
