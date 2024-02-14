@@ -2,7 +2,9 @@
 
 Recycles things, assuming there exists a crafting recipe for it. Because having a lava pool around just to destroy trash is an OSHA violation.
 
-Works with minetest base game and mineclonia but built mostly because of mineclonia. It might work with mineclone2 but not officially supported.
+Works with minetest base game and [`mineclonia`](https://content.minetest.net/packages/ryvnf/mineclonia/) but built mostly because of mineclonia. It might work with mineclone2 but not actively supported.
+
+Check out the companion ["Unsolicited Recipes"](https://content.minetest.net/packages/ketwaroo/mcl_misk_recipes/) mod for those pesky unrecyclables.
 
 ## Crafting the recyclebin
 
@@ -46,7 +48,7 @@ Infinite item exploit. You're welcome. Well not really, it's basically a gamble 
 
 ### Hopper support
 
-Supports `mineclonia` hopper API and the [FaceDeer hopper mod](https://content.minetest.net/packages/FaceDeer/hopper/). Well, as long as you don't look at the inner workings too closely, it's usable.
+Supports `mineclonia` hopper API fully, and the [FaceDeer hopper mod](https://content.minetest.net/packages/FaceDeer/hopper/) to the best of my abilities. Well, as long as you don't look at the inner workings too closely, it's usable.
 
 Hoppers can be used to automate processing. A reasonable shematic would be Chest -> recycler -> chest where `->` is a hopper. That way you can dump all the loot you don't care about in the top chest and collect materials from the bottom one later.
 
@@ -80,7 +82,7 @@ Based on a suggestion from `JamesClarke7283` via github.
 
 ### As usual, no warranty, liability for loss of etc.
 
-This is me just poking around with mintest mods and this one is mostly usable for my tastes.
+This is me just poking around with minetest mods and this one is mostly usable for my tastes.
 Other recycling mods exist but I haven't looked at them and have no idea if this is the socially acceptable way to go about this.
 If you don't like it, don't use it.
 
