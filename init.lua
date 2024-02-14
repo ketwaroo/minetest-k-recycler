@@ -768,13 +768,17 @@ if minetest.get_modpath("default") then
 elseif minetest.get_modpath("mcl_util") then
     thedef.sounds = mcl_sounds.node_sound_metal_defaults()
 
+    -- compatibility with mineclone2
+    ---@type function, function
+    local get_first_occupied_inventory_slot, move_item_container = dofile(minetest.get_modpath(minetest.get_current_modname()) .. "/compat/mineclone2.lua")
+
     thedef._on_hopper_in = function(hopper_pos, to_pos)
         local meta = minetest.get_meta(to_pos)
         local inv = meta:get_inventory()
 
         -- skip is in process of emptying or still processing
         if not inv_is_empty(inv, k_recyclebin.container_output) then
-            --print("_on_hopper_in skip 1")
+            -- print("_on_hopper_in skip 1")
             return false
         end
 
@@ -783,9 +787,10 @@ elseif minetest.get_modpath("mcl_util") then
         meta:set_string("formspec", get_recycler_formspec(to_pos))
 
         local hopperInv = minetest.get_meta(hopper_pos):get_inventory()
-        local slotId = mcl_util.get_first_occupied_inventory_slot(hopperInv, "main")
+        local slotId = get_first_occupied_inventory_slot(hopperInv, "main")
 
         if not slotId then
+            -- print("_on_hopper_in skip 2" .. dump(minetest.get_node(hopper_pos)))
             return false
         end
 
@@ -802,7 +807,7 @@ elseif minetest.get_modpath("mcl_util") then
             not inv_is_empty(inv, k_recyclebin.container_input)
             and hopperStack:get_name() ~= inputStack:get_name()
         then
-            --print("_on_hopper_in skip 2")
+            -- print("_on_hopper_in skip 3")
             return false
         end
 
@@ -813,7 +818,7 @@ elseif minetest.get_modpath("mcl_util") then
         -- try to load at least one stack if available
         if inputStack:get_count() < idealRecipeStack:get_count() then
             for i = 1, idealRecipeStack:get_count() - inputStack:get_count(), 1 do
-                sucked = mcl_util.move_item_container(hopper_pos, to_pos, nil, nil, k_recyclebin.container_input)
+                sucked = move_item_container(hopper_pos, to_pos, nil, nil, k_recyclebin.container_input)
             end
         end
 
@@ -825,7 +830,7 @@ elseif minetest.get_modpath("mcl_util") then
 
     thedef._on_hopper_out = function(from_pos, hopper_pos)
         -- Suck items from the container into the hopper
-        local sucked = mcl_util.move_item_container(from_pos, hopper_pos, k_recyclebin.container_output)
+        local sucked = move_item_container(from_pos, hopper_pos, k_recyclebin.container_output)
 
         if sucked then
             -- clear input when we take retrieve items from output.
@@ -835,6 +840,36 @@ elseif minetest.get_modpath("mcl_util") then
         return sucked
     end
 
+    -- tentative mineclone2 support
+    thedef.groups.container = 2
+
+    thedef._mcl_hoppers_on_try_pull = function(pos, hop_pos, hop_inv, hop_list)
+        local sucked = thedef._on_hopper_out(pos, hop_pos)
+        -- print("_mcl_hoppers_on_try_pull"
+        --     .. dump(sucked)
+        --     .. dump(pos)
+        --     .. dump(hop_pos)
+        --     --.. dump(hop_inv)
+        --     .. dump(hop_list)
+        -- )
+        return nil, nil, nil
+    end
+    thedef._mcl_hoppers_on_try_push = function(pos, hop_pos, hop_inv, hop_list)
+        local sucked = thedef._on_hopper_in(hop_pos, pos)
+        -- don't need anything further
+        return nil, nil, nil
+    end
+    -- never triggers?
+    -- thedef._mcl_hoppers_on_after_pull = function(pos)
+    --     print("_mcl_hoppers_on_try_push"
+    --         .. dump(pos)
+    --     )
+    -- end
+    -- thedef._mcl_hoppers_on_after_push = function(pos)
+    --     print("_mcl_hoppers_on_try_push"
+    --         .. dump(pos)
+    --     )
+    -- end
 
     minetest.register_craft({
         output = "k_recyclebin:recyclebin",
