@@ -52,9 +52,6 @@ minetest.register_on_mods_loaded(function()
 
     -- load initial protected items
     local initalProtected = string.split(minetest.settings:get("k_recyclebin.protected_items") or "", ",")
-
-    table.insert(initalProtected, "default:coal_lump")
-
     for _, pr in ipairs(initalProtected) do
         pr = ("" .. pr):trim()
         -- @todo what about aliases? ignoring for now. I'm not doing the extra lookups.
