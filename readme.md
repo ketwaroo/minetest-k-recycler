@@ -1,8 +1,9 @@
-# Minetest - Actual Recyclebin
+K Recycle Bin
+=============
 
 Recycles things, assuming there exists a crafting recipe for it. Because having a lava pool around just to destroy trash is an OSHA violation.
 
-Works with minetest base game and [`mineclonia`](https://content.minetest.net/packages/ryvnf/mineclonia/) but built mostly because of mineclonia. It might work with mineclone2 but not actively supported.
+Works with minetest base game and [`mineclonia`](https://content.minetest.net/packages/ryvnf/mineclonia/) but built mostly because of mineclonia. It has been reported that it works with mineclone2 as well, although I am not actively supporting that game. Feel free to report bugs and provide pull requests.
 
 Check out the companion ["Unsolicited Recipes"](https://content.minetest.net/packages/ketwaroo/mcl_misk_recipes/) mod for those pesky unrecyclables.
 
@@ -20,7 +21,7 @@ In `mineclonia`, you'll need iron ingots, redstone block, furnace, composter, cr
 
 Left single slot accepts the input, output preview will appear in rightmost 3x3 grid. Your inventory should be in the bottom.
 
-You can  cancel the recycle operation by removing the input item. However,  taking an item from the 3x3 grid into your main inventory will count as confirming the recycle operation and destroy the input item.
+You can cancel the recycle operation by removing the input item. However, taking an item from the 3x3 grid into your main inventory will count as confirming the recycle operation and destroy the input item.
 
 ### Unrecyclable items
 
@@ -48,7 +49,7 @@ Infinite item exploit. You're welcome. Well not really, it's basically a gamble 
 
 ### Hopper support
 
-Supports `mineclonia` hopper API fully, and the [FaceDeer hopper mod](https://content.minetest.net/packages/FaceDeer/hopper/) to the best of my abilities. Well, as long as you don't look at the inner workings too closely, it's usable.
+Supports `mineclonia` hopper API fully, `mineclone2` hoppers somewhat, and the [FaceDeer hopper mod](https://content.minetest.net/packages/FaceDeer/hopper/) to the best of my abilities. Well, as long as you don't look at the inner workings too closely, it's usable.
 
 Hoppers can be used to automate processing. A reasonable shematic would be Chest -> recycler -> chest where `->` is a hopper. That way you can dump all the loot you don't care about in the top chest and collect materials from the bottom one later.
 
@@ -104,7 +105,7 @@ For example, assume the following recipe exists `group:coal` + `group:stick` = `
 
 Recycling a torch crafted form coal and stick may yield any combination of `(coal,charcoal)+(stick,bamboo)` depending on what was cached/found at run time. 
 
-### Destroy Mode (WIP; disabled by default)
+### Destroy Mode (experimental; disabled by default)
 
 There are occasionally items that can't be crafted and therfore recycled but you still don't want to keep them around. Or they may be leftovers from another mod you disabled and they show up as unknown blocks or items in your inventory. Or just stuff you really don't care to keep around.
 
